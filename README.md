@@ -26,6 +26,9 @@ project(myproject VERSION 0.1)
 
 # most applications will need threads
 set(THREADS_PREFER_PTHREAD_FLAG true)
+find_package(Threads REQUIRED)
+# skip the modecheck library (only cobalt kernels)
+set(XENOMAI_SKIP_MODECHECK true)
 # and we require Xenomai 3 or higher
 find_package(Xenomai 3.0 REQUIRED)
 
@@ -35,7 +38,7 @@ add_executable(myexec
 	src/bootstrap.c
 )
 
-# require Cobalt, will fail on Mercury or if Xenomai is missing
+# use Cobalt without Posix Wrappings
 target_link_libraries(myexec PRIVATE
 	Xenomai::Cobalt Xenomai::ModeChk Threads::Threads rt
 )
@@ -49,7 +52,7 @@ add_executable(anotherexec
 # with xenomai, it can use Mercury or Cobalt
 if (XENOMAI_FOUND)
 target_link_libraries(anotherexec PRIVATE
-	Xenomai::Xenomai
+	Xenomai::Posix
 )
 endif()
 
