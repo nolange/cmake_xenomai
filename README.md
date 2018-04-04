@@ -94,6 +94,64 @@ for the boostrap code
 -   or do so in a hacky way by defining main as macro.
 
 
+## More detailed description
+
+The boostrapping code does multiple tasks
+
+-   parse parameters from the commandline, create a new `reduced argv` with those options removed
+-   setup Xenomai subsystems (potentially depending on the parameters)
+-   promote the main thread to realtime (otherwise most cobalt calls will fail)
+-   a wrapper that interposes on the ragular `main` function and call it with the `reduced argv`
+
+The first three points can be called the `early initialisation` happen relatively early with gcc's attribute `constructor(220)`, see the file `include/boilerplate/setup.h`.
+Specifically it runs before normal (non-priority) `constructor` functions and C++ global constructors, which thus could depend on Xenomai already been initialised. A fully explicit call to `xenomai_init` from the `main` function would have the downside of not supporting these constructs.
+
+The wrapping of the main function is (perhaps just subjectively) pretty complicated. My opionion (nolange) would be to
+easily be able to add the `early initialisation` to a project, while not providing an intransparent option for wrapping the main function.
+
+some possible alternatives for the `main` wrap follow.
+
+Variant A "Linkersymbol"
+
+```c
+int xenomai_init_getargv(int *argc, char *const** argv);
+
+ __attribute__((weak)) int xenomai_init_getargv(int *argc, char *const** argv)
+{
+	return 0;
+
+}
+int main(int argc, char *const argv[])
+{
+	xenomai_init_getargv(&argc, &argv);
+}
+```
+
+Variant B "Macro Guard"
+
+```c
+int xenomai_init_getargv(int *argc, char *const** argv);
+
+int main(int argc, char *const argv[])
+{
+#if defined(__COBALT__) || defined(__MERCURY__)
+	xenomai_init_getargv(&argc, &argv);
+#endif
+}
+```
+
+Variant C "Dont Care"
+
+```c
+int main(int argc, char *const argv[])
+{
+	/* argv might have arguments that were already consumed in early initialisation */
+}
+```
+
+
+
+
 
 # State
 

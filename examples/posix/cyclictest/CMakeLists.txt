@@ -16,7 +16,7 @@ add_executable(cyclictest
 	rt-utils.c
 )
 target_link_libraries(cyclictest PRIVATE
-	Xenomai::Posix Threads::Threads rt
+	Xenomai::Bootstrap Xenomai::Posix Threads::Threads rt
 )
 
 target_compile_definitions(cyclictest PRIVATE

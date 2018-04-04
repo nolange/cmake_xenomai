@@ -12,18 +12,38 @@
 #
 # This module defines the following :prop_tgt:`IMPORTED` targets:
 #
+#
+# Xenomai Frameworks, only one will be available
+#
 # ``Xenomai::Cobalt``
-#   The POSIX Environment for Xenomai using the realtime Dual-Kernel
+#   The Xenomai Framework using the realtime Dual-Kernel. This
+#   is also a skin, but does never include further targets
+#   automatically
 # ``Xenomai::Mercury``
-#   the POSIX Environment for Xenomai
+#   The Xenomai Framework using regular Linux
+#   This one should not be used directly
+#
+# Xenomai optional modules
+#
 # ``Xenomai::ModeChk``
 #   The optional modecheck library for the realtime Dual-Kernel
-# ``Xenomai::Xenomai``
-#   Default configuration for the detected Xenomai Variant
+# ``Xenomai::Bootstrap``
+#   Bootstrap code to initialise Xenomai
+#   Prefer to live without it if possible (TODO: Readme)
 #
-# The ``Xenomai::Xenomai`` target checks the Variable ``XENOMAI_SKIP_MODECHECK``,
-# if it does not resolve to true then the target will include the
-# modecheck library if available
+# Xenomai skins
+#
+# ``Xenomai::Posix``
+#   Posix skin for the detected Xenomai kernel
+# ``Xenomai::Vxworks``, ``Xenomai::Psos``, ``Xenomai::Alchemy``, `Xenomai::Smokey``
+#   Diverse Realtime Skins for Xenomai
+#
+# The ``Xenomai::Posix`` target and other skins check the variable
+# ``XENOMAI_SKIP_MODECHECK``, if it does not resolve to true,
+# then the target will include the modecheck library if available.
+#
+# The ``Xenomai::Cobalt`` target will never include the modecheck or bootstrap library.
+#
 #  
 # Result variables
 # ^^^^^^^^^^^^^^^^
@@ -234,9 +254,6 @@ endfunction()
 
 _xeno_get_version()
 
-# TODO: replacement for the bootstrap
-# $HOME/buildroot/staging/usr/xenomai/lib/xenomai/bootstrap.o  -Wl,--wrap=main -Wl,--dynamic-list=/home/lano/buildroot/staging/usr/xenomai/lib/dynlist.ld 
-
 include(FindPackageHandleStandardArgs)
 # Note that the first variable is displayed
 # set(__XENOMAI_DISPLAY ${XENOMAI_CORE_TYPE})
@@ -244,65 +261,77 @@ find_package_handle_standard_args(Xenomai REQUIRED_VARS XENOMAI_CORE_TYPE __XENO
                                      VERSION_VAR XENOMAI_VERSION)
                                      
 if(XENOMAI_FOUND)
-    if (NOT TARGET Xenomai::ModeChk AND XENOMAI_MODECHK_LIBRARY)
-      add_library(Xenomai::ModeChk INTERFACE IMPORTED)
+  set(XENOMAI_BOOTSTRAP_SRC
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_FIND_XENO_DIR}/bootstrap-shl.c>
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_FIND_XENO_DIR}/bootstrap.c>
+    )
+  if (NOT TARGET Xenomai::Bootstrap AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap.o" AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o")
+    add_library(Xenomai::Bootstrap INTERFACE IMPORTED)
 
-      set_target_properties(Xenomai::ModeChk PROPERTIES
-        INTERFACE_LINK_LIBRARIES "-Wl,@${__XENOMAI_LIBRARY_PATH}/modechk.wrappers;${XENOMAI_MODECHK_LIBRARY}"
-      )
-    endif()
+    # Aint CMake's syntax beautiful?
+    set_target_properties(Xenomai::Bootstrap PROPERTIES
+      INTERFACE_LINK_LIBRARIES "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o>;$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${__XENOMAI_LIBRARY_PATH}/bootstrap.o>;$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list=${__XENOMAI_LIBRARY_PATH}/dynlist.ld>"
+    )
+  endif()
+  if (NOT TARGET Xenomai::ModeChk AND XENOMAI_MODECHK_LIBRARY)
+    add_library(Xenomai::ModeChk INTERFACE IMPORTED)
 
-    if (NOT TARGET Xenomai::Cobalt AND XENOMAI_COBALT_LIBRARY)
-      add_library(Xenomai::Cobalt INTERFACE IMPORTED)
+    set_target_properties(Xenomai::ModeChk PROPERTIES
+      INTERFACE_LINK_LIBRARIES "-Wl,@${__XENOMAI_LIBRARY_PATH}/modechk.wrappers;${XENOMAI_MODECHK_LIBRARY}"
+    )
+  endif()
 
-      set_target_properties(Xenomai::Cobalt PROPERTIES
-        INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_DEFINITIONS}"
-        INTERFACE_INCLUDE_DIRECTORIES "${__XENOMAI_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_LIBRARIES}"
-      )
-    endif()
+  if (NOT TARGET Xenomai::Cobalt AND XENOMAI_COBALT_LIBRARY)
+    add_library(Xenomai::Cobalt INTERFACE IMPORTED)
 
-    if (NOT TARGET Xenomai::Mercury AND XENOMAI_MERCURY_LIBRARY)
-      add_library(Xenomai::Mercury INTERFACE IMPORTED)
+    set_target_properties(Xenomai::Cobalt PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_DEFINITIONS}"
+      INTERFACE_INCLUDE_DIRECTORIES "${__XENOMAI_INCLUDE_DIRS}"
+      INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_LIBRARIES}"
+    )
+  endif()
 
-      set_target_properties(Xenomai::Mercury PROPERTIES
-        INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_DEFINITIONS}"
-        INTERFACE_INCLUDE_DIRECTORIES "${__XENOMAI_INCLUDE_DIRS}"
-        INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_LIBRARIES}"
-      )
-    endif()
+  if (NOT TARGET Xenomai::Mercury AND XENOMAI_MERCURY_LIBRARY)
+    add_library(Xenomai::Mercury INTERFACE IMPORTED)
 
-    set(_xenomai_libs)
-    if(XENOMAI_CORE_TYPE_COBALT)
-	    set(_xenomai_libs Xenomai::Cobalt)
-	    if(NOT XENOMAI_SKIP_MODECHECK AND TARGET Xenomai::ModeChk)
-	      set(_xenomai_modecheck ${_xenomai_modecheck} Xenomai::ModeChk)
-	    endif()
-	    
-	  elseif(XENOMAI_CORE_TYPE_MERCURY)
-	    set(_xenomai_libs Xenomai::Mercury)
-	  endif()
+    set_target_properties(Xenomai::Mercury PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_DEFINITIONS}"
+      INTERFACE_INCLUDE_DIRECTORIES "${__XENOMAI_INCLUDE_DIRS}"
+      INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_LIBRARIES}"
+    )
+  endif()
 
-    if (NOT TARGET Xenomai::Posix AND _xenomai_libs)
-        add_library(Xenomai::Posix INTERFACE IMPORTED)
-        set_target_properties(Xenomai::Posix PROPERTIES
-        	INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_POSIX_DEFINITIONS}"
-            INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_POSIX_LIBRARIES};${_xenomai_modecheck};${_xenomai_libs}"
-        )
-    endif()
-    foreach(_extralib Vxworks Psos Alchemy Rtdm Smokey)
-      string(TOLOWER ${_extralib} _extralib_l)
-      string(TOUPPER ${_extralib} _extralib_u)
-
-      if (NOT TARGET Xenomai::${_extralib} AND XENOMAI_${_extralib_u}_LIBRARY)
-        add_library(Xenomai::${_extralib} INTERFACE IMPORTED)
-
-        set_target_properties(Xenomai::${_extralib} PROPERTIES
-          INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/${_extralib_l}"
-          INTERFACE_LINK_LIBRARIES "-l${_extralib_l};${XENOMAI_COPPERPLATE_LIBRARY};${_xenomai_modecheck};${_xenomai_libs}"
-        )
+  set(_xenomai_libs)
+  if(XENOMAI_CORE_TYPE_COBALT)
+      set(_xenomai_libs Xenomai::Cobalt)
+      if(NOT XENOMAI_SKIP_MODECHECK AND TARGET Xenomai::ModeChk)
+        set(_xenomai_modecheck ${_xenomai_modecheck} Xenomai::ModeChk)
       endif()
-    endforeach(_extralib)
+      
+    elseif(XENOMAI_CORE_TYPE_MERCURY)
+      set(_xenomai_libs Xenomai::Mercury)
+    endif()
+
+  if (NOT TARGET Xenomai::Posix AND _xenomai_libs)
+      add_library(Xenomai::Posix INTERFACE IMPORTED)
+      set_target_properties(Xenomai::Posix PROPERTIES
+          INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_POSIX_DEFINITIONS}"
+          INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_POSIX_LIBRARIES};${_xenomai_modecheck};${_xenomai_libs}"
+      )
+  endif()
+  foreach(_extralib Vxworks Psos Alchemy Smokey)
+    string(TOLOWER ${_extralib} _extralib_l)
+    string(TOUPPER ${_extralib} _extralib_u)
+
+    if (NOT TARGET Xenomai::${_extralib} AND XENOMAI_${_extralib_u}_LIBRARY)
+      add_library(Xenomai::${_extralib} INTERFACE IMPORTED)
+
+      set_target_properties(Xenomai::${_extralib} PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/${_extralib_l}"
+        INTERFACE_LINK_LIBRARIES "-l${_extralib_l};${XENOMAI_COPPERPLATE_LIBRARY};${_xenomai_modecheck};${_xenomai_libs}"
+      )
+    endif()
+  endforeach(_extralib)
 endif()
 
 unset(_xenomai_libs)

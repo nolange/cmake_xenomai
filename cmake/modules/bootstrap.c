@@ -5,9 +5,22 @@
  *  hook the main function via wraps.
  */
 
+int xenomai_init_getargv(int *argc, char *const** argv);
+
 static int early_argc;
 
 static char *const *early_argv;
+
+int xenomai_init_getargv(int *argc, char *const** argv)
+{
+	if (early_argc)
+	{
+		*argc = early_argc;
+		*argv = early_argv;
+		return 1;
+	}
+	return 0;
+}
 
 #ifdef __BOOTSTRAP_DSO__
 
@@ -17,23 +30,6 @@ static inline void call_init(int *argcp, char *const **argvp)
 }
 
 #else
-
-const int xenomai_auto_bootstrap = 1;
-
-int __real_main(int argc, char *const argv[]);
-
-int __wrap_main(int argc, char *const argv[])
-__attribute__((alias("xenomai_main"), weak));
-
-int xenomai_main(int argc, char *const argv[])
-{
-	if (early_argc)
-		return __real_main(early_argc, early_argv);
-	
-	xenomai_init(&argc, &argv);
-
-	return __real_main(argc, argv);
-}
 
 static inline void call_init(int *argcp, char *const **argvp)
 {
@@ -48,6 +44,9 @@ __bootstrap_ctor static void xenomai_bootstrap(int argc, char **argv, char **env
     /* wrong signature ?! */
     call_init(&argc, (char* const**) &argv);
     (void)envp;
+    // TODO: are the argv strings replaced or modified?
+    early_argc = argc;
+	early_argv = argv;
 }
 #else
 __bootstrap_ctor static void xenomai_bootstrap(void)
