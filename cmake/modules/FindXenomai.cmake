@@ -259,20 +259,43 @@ include(FindPackageHandleStandardArgs)
 # set(__XENOMAI_DISPLAY ${XENOMAI_CORE_TYPE})
 find_package_handle_standard_args(Xenomai REQUIRED_VARS XENOMAI_CORE_TYPE __XENOMAI_LIBRARY_PATH __XENOMAI_COMPILE_DEFINITIONS __XENOMAI_INCLUDE_DIRS __XENOMAI_LINK_LIBRARIES XENOMAI_INCLUDE_DIR
                                      VERSION_VAR XENOMAI_VERSION)
-                                     
+# TODO: Write out a cmake file as cache?
 if(XENOMAI_FOUND)
+  set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
+  file(WRITE "${_fileprefix}_main.c" "#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER __wrap_main\n#include <xenomai/bootstrap-template.h>")
+  file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
+  file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
+
   set(XENOMAI_BOOTSTRAP_SRC
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_FIND_XENO_DIR}/bootstrap-shl.c>
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_FIND_XENO_DIR}/bootstrap.c>
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>
     )
+
+  set(XENOMAI_BOOTSTRAP_WRAP_SRC
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>
+    )
+
   if (NOT TARGET Xenomai::Bootstrap AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap.o" AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o")
     add_library(Xenomai::Bootstrap INTERFACE IMPORTED)
 
     # Aint CMake's syntax beautiful?
     set_target_properties(Xenomai::Bootstrap PROPERTIES
-      INTERFACE_LINK_LIBRARIES "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o>;$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${__XENOMAI_LIBRARY_PATH}/bootstrap.o>;$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list=${__XENOMAI_LIBRARY_PATH}/dynlist.ld>"
+      INTERFACE_LINK_LIBRARIES "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o>;$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${__XENOMAI_LIBRARY_PATH}/bootstrap.o$<SEMICOLON>-Wl,--wrap=main,--dynamic-list=${__XENOMAI_LIBRARY_PATH}/dynlist.ld>"
     )
   endif()
+
+  if(CMAKE_VERSION VERSION_GREATER "3.1")
+      function(xenomai_target_bootstrap target)
+        target_sources(${target} PRIVATE
+#           ${XENOMAI_BOOTSTRAP_SRC}
+            ${XENOMAI_BOOTSTRAP_WRAP_SRC}
+        )
+        target_link_libraries(${target} PRIVATE
+            $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list="${__XENOMAI_LIBRARY_PATH}/dynlist.ld">
+        )
+      endfunction()
+endif()
   if (NOT TARGET Xenomai::ModeChk AND XENOMAI_MODECHK_LIBRARY)
     add_library(Xenomai::ModeChk INTERFACE IMPORTED)
 
@@ -338,7 +361,7 @@ unset(_xenomai_libs)
 unset(_extralib_l)
 unset(_extralib_u)
 unset(_extralib)
-unset(__XENOMAI_LIBRARY_PATH)
+#unset(__XENOMAI_LIBRARY_PATH)
 unset(__XENOMAI_COMPILE_DEFINITIONS)
 unset(__XENOMAI_INCLUDE_DIRS)
 unset(__XENOMAI_LINK_LIBRARIES)
