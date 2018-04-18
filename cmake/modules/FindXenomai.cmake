@@ -90,7 +90,8 @@
 #     add_executable(xenomai_cobalt foo.cc)
 #     target_link_libraries(xenomai_cobalt Xenomai::Cobalt)
 #
-#
+# Minimal required CMake Version is 3.0,
+# several features are only fully usable with 3.1
 
 if(NOT _FIND_XENO_DIR)
   set(_FIND_XENO_DIR "${CMAKE_CURRENT_LIST_DIR}")
@@ -266,16 +267,6 @@ if(XENOMAI_FOUND)
   file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
   file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
 
-  set(XENOMAI_BOOTSTRAP_SRC
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>
-    )
-
-  set(XENOMAI_BOOTSTRAP_WRAP_SRC
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>
-    )
-
   if (NOT TARGET Xenomai::Bootstrap AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap.o" AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o")
     add_library(Xenomai::Bootstrap INTERFACE IMPORTED)
 
@@ -285,7 +276,17 @@ if(XENOMAI_FOUND)
     )
   endif()
 
+  # target sources and source generator expressions only available with CMake 3.1
   if(CMAKE_VERSION VERSION_GREATER "3.1")
+    set(XENOMAI_BOOTSTRAP_SRC
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
+    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>
+    )
+
+    set(XENOMAI_BOOTSTRAP_WRAP_SRC
+      $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
+      $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>
+      )
       function(xenomai_target_bootstrap target)
         target_sources(${target} PRIVATE
 #           ${XENOMAI_BOOTSTRAP_SRC}
@@ -295,7 +296,7 @@ if(XENOMAI_FOUND)
             $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list="${__XENOMAI_LIBRARY_PATH}/dynlist.ld">
         )
       endfunction()
-endif()
+  endif()
   if (NOT TARGET Xenomai::ModeChk AND XENOMAI_MODECHK_LIBRARY)
     add_library(Xenomai::ModeChk INTERFACE IMPORTED)
 
