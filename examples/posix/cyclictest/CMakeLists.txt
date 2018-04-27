@@ -43,6 +43,10 @@ xenomai_target_bootstrap(cyclictest
 	)
 endif()
 
+target_link_libraries(cyclictest PRIVATE
+	-Wl,-Map=$<TARGET_PROPERTY:NAME>.map,--cref,--enable-new-dtags,-z,relro,-z,now
+)
+
 target_compile_definitions(cyclictest PRIVATE
 	-D_GNU_SOURCE
 	VERSION_STRING="${PROJECT_VERSION}"

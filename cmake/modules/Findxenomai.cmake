@@ -15,34 +15,34 @@
 #
 # Xenomai Frameworks, only one will be available
 #
-# ``Xenomai::Cobalt``
+# ``xenomai::cobalt``
 #   The Xenomai Framework using the realtime Dual-Kernel. This
 #   is also a skin, but does never include further targets
 #   automatically
-# ``Xenomai::Mercury``
+# ``xenomai::mercury``
 #   The Xenomai Framework using regular Linux
 #   This one should not be used directly
 #
 # Xenomai optional modules
 #
-# ``Xenomai::ModeChk``
+# ``xenomai::modechk``
 #   The optional modecheck library for the realtime Dual-Kernel
-# ``Xenomai::Bootstrap``
+# ``xenomai::bootstrap``
 #   Bootstrap code to initialise Xenomai
 #   Prefer to live without it if possible (TODO: Readme)
 #
 # Xenomai skins
 #
-# ``Xenomai::Posix``
+# ``xenomai::posix``
 #   Posix skin for the detected Xenomai kernel
-# ``Xenomai::Vxworks``, ``Xenomai::Psos``, ``Xenomai::Alchemy``, `Xenomai::Smokey``
+# ``xenomai::vxworks``, ``xenomai::psos``, ``xenomai::alchemy``, `xenomai::smokey``
 #   Diverse Realtime Skins for Xenomai
 #
-# The ``Xenomai::Posix`` target and other skins check the variable
+# The ``xenomai::posix`` target and other skins check the variable
 # ``XENOMAI_SKIP_MODECHECK``, if it does not resolve to true,
 # then the target will include the modecheck library if available.
 #
-# The ``Xenomai::Cobalt`` target will never include the modecheck or bootstrap library.
+# The ``xenomai::cobalt`` target will never include the modecheck or bootstrap library.
 #
 #  
 # Result variables
@@ -84,11 +84,11 @@
 #     # Use whatever Xenomai kernel is avaiable,
 #     # use modecheck library if available
 #     add_executable(xenomai_anykernel foo.cc)
-#     target_link_libraries(xenomai_anykernel Xenomai::Xenomai)
+#     target_link_libraries(xenomai_anykernel xenomai::xenomai)
 #
 #     # depend on Cobalt, fail if this kernel is missing
 #     add_executable(xenomai_cobalt foo.cc)
-#     target_link_libraries(xenomai_cobalt Xenomai::Cobalt)
+#     target_link_libraries(xenomai_cobalt xenomai::cobalt)
 #
 # Minimal required CMake Version is 3.0,
 # several features are only fully usable with 3.1
@@ -258,111 +258,221 @@ _xeno_get_version()
 include(FindPackageHandleStandardArgs)
 # Note that the first variable is displayed
 # set(__XENOMAI_DISPLAY ${XENOMAI_CORE_TYPE})
-find_package_handle_standard_args(Xenomai REQUIRED_VARS XENOMAI_CORE_TYPE __XENOMAI_LIBRARY_PATH __XENOMAI_COMPILE_DEFINITIONS __XENOMAI_INCLUDE_DIRS __XENOMAI_LINK_LIBRARIES XENOMAI_INCLUDE_DIR
+find_package_handle_standard_args(xenomai REQUIRED_VARS XENOMAI_CORE_TYPE __XENOMAI_LIBRARY_PATH __XENOMAI_COMPILE_DEFINITIONS __XENOMAI_INCLUDE_DIRS __XENOMAI_LINK_LIBRARIES XENOMAI_INCLUDE_DIR
                                      VERSION_VAR XENOMAI_VERSION)
 # TODO: Write out a cmake file as cache?
 if(XENOMAI_FOUND)
-  set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
-  file(WRITE "${_fileprefix}_main.c" "#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER __wrap_main\n#include <xenomai/bootstrap-template.h>")
-  file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
-  file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
+  cmake_policy(PUSH)
+  cmake_policy(VERSION 2.6)
+  set(_threadlib "Threads::Threads")
+  if(CMAKE_VERSION VERSION_LESS 3.1)
+    set(_threadlib "${CMAKE_THREAD_LIBS_INIT}")
+  endif()
 
-  if (NOT TARGET Xenomai::Bootstrap AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap.o" AND EXISTS "${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o")
-    add_library(Xenomai::Bootstrap INTERFACE IMPORTED)
 
-    # Aint CMake's syntax beautiful?
-    set_target_properties(Xenomai::Bootstrap PROPERTIES
-      INTERFACE_LINK_LIBRARIES "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${__XENOMAI_LIBRARY_PATH}/bootstrap-pic.o>;$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${__XENOMAI_LIBRARY_PATH}/bootstrap.o$<SEMICOLON>-Wl,--wrap=main,--dynamic-list=${__XENOMAI_LIBRARY_PATH}/dynlist.ld>"
+  if (NOT TARGET xenomai::cobalt AND XENOMAI_COBALT_LIBRARY)
+    message("d${XENOMAI_COBALT_LIBRARY}")
+    add_library(xenomai::cobalt SHARED IMPORTED)
+
+    set_target_properties(xenomai::cobalt PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS "__COBALT__"
+      INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/cobalt;${XENOMAI_INCLUDE_DIR}"
+      INTERFACE_LINK_LIBRARIES "${_threadlib};-lrt"
+      IMPORTED_LOCATION "${XENOMAI_COBALT_LIBRARY}"
+      IMPORTED_SONAME_NOCONFIG "libcobalt.so"
     )
   endif()
 
-  # target sources and source generator expressions only available with CMake 3.1
-  if(CMAKE_VERSION VERSION_GREATER "3.1")
-    set(XENOMAI_BOOTSTRAP_SRC
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
-    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>
-    )
+  if (NOT TARGET xenomai::modechk AND XENOMAI_MODECHK_LIBRARY)
+    add_library(xenomai::modechk SHARED IMPORTED)
 
-    set(XENOMAI_BOOTSTRAP_WRAP_SRC
-      $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>
-      $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>
+    set_target_properties(xenomai::modechk PROPERTIES
+      INTERFACE_LINK_LIBRARIES "-Wl,@${__XENOMAI_LIBRARY_PATH}/modechk.wrappers;${_threadlib};-lrt"
+      IMPORTED_LOCATION "${XENOMAI_MODECHK_LIBRARY}"
+    )
+  endif()
+
+  if (NOT TARGET xenomai::mercury AND XENOMAI_MERCURY_LIBRARY)
+    add_library(xenomai::mercury SHARED IMPORTED)
+
+    set_target_properties(xenomai::mercury PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS "__MERCURY__"
+      INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/mercury;${XENOMAI_INCLUDE_DIR}"
+      INTERFACE_LINK_LIBRARIES "${_threadlib};-lrt"
+      IMPORTED_LOCATION "${XENOMAI_MERCURY_LIBRARY}"
+    )
+  endif()
+
+  if (NOT TARGET xenomai::posix)
+    if (TARGET xenomai::cobalt)
+      # Create imported target xenomai::posix
+      message("p${XENOMAI_COBALT_LIBRARY}")
+      add_library(xenomai::posix INTERFACE IMPORTED)
+
+      set_target_properties(xenomai::posix PROPERTIES
+        INTERFACE_LINK_LIBRARIES "xenomai::cobalt"
       )
-      function(xenomai_target_bootstrap target)
-        target_sources(${target} PRIVATE
-#           ${XENOMAI_BOOTSTRAP_SRC}
-            ${XENOMAI_BOOTSTRAP_WRAP_SRC}
-        )
-        target_link_libraries(${target} PRIVATE
-            $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list="${__XENOMAI_LIBRARY_PATH}/dynlist.ld">
-        )
-      endfunction()
-  endif()
-  if (NOT TARGET Xenomai::ModeChk AND XENOMAI_MODECHK_LIBRARY)
-    add_library(Xenomai::ModeChk INTERFACE IMPORTED)
+    elseif(TARGET xenomai::mercury)
+      # Create imported target xenomai::posix
+      add_library(xenomai::posix INTERFACE IMPORTED)
 
-    set_target_properties(Xenomai::ModeChk PROPERTIES
-      INTERFACE_LINK_LIBRARIES "-Wl,@${__XENOMAI_LIBRARY_PATH}/modechk.wrappers;${XENOMAI_MODECHK_LIBRARY}"
-    )
-  endif()
-
-  if (NOT TARGET Xenomai::Cobalt AND XENOMAI_COBALT_LIBRARY)
-    add_library(Xenomai::Cobalt INTERFACE IMPORTED)
-
-    set_target_properties(Xenomai::Cobalt PROPERTIES
-      INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_DEFINITIONS}"
-      INTERFACE_INCLUDE_DIRECTORIES "${__XENOMAI_INCLUDE_DIRS}"
-      INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_LIBRARIES}"
-    )
-  endif()
-
-  if (NOT TARGET Xenomai::Mercury AND XENOMAI_MERCURY_LIBRARY)
-    add_library(Xenomai::Mercury INTERFACE IMPORTED)
-
-    set_target_properties(Xenomai::Mercury PROPERTIES
-      INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_DEFINITIONS}"
-      INTERFACE_INCLUDE_DIRECTORIES "${__XENOMAI_INCLUDE_DIRS}"
-      INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_LIBRARIES}"
-    )
-  endif()
-
-  set(_xenomai_libs)
-  if(XENOMAI_CORE_TYPE_COBALT)
-      set(_xenomai_libs Xenomai::Cobalt)
-      if(NOT XENOMAI_SKIP_MODECHECK AND TARGET Xenomai::ModeChk)
-        set(_xenomai_modecheck ${_xenomai_modecheck} Xenomai::ModeChk)
-      endif()
-      
-    elseif(XENOMAI_CORE_TYPE_MERCURY)
-      set(_xenomai_libs Xenomai::Mercury)
-    endif()
-
-  if (NOT TARGET Xenomai::Posix AND _xenomai_libs)
-      add_library(Xenomai::Posix INTERFACE IMPORTED)
-      set_target_properties(Xenomai::Posix PROPERTIES
-          INTERFACE_COMPILE_DEFINITIONS "${__XENOMAI_COMPILE_POSIX_DEFINITIONS}"
-          INTERFACE_LINK_LIBRARIES "${__XENOMAI_LINK_POSIX_LIBRARIES};${_xenomai_modecheck};${_xenomai_libs}"
-      )
-  endif()
-  foreach(_extralib Vxworks Psos Alchemy Smokey)
-    string(TOLOWER ${_extralib} _extralib_l)
-    string(TOUPPER ${_extralib} _extralib_u)
-
-    if (NOT TARGET Xenomai::${_extralib} AND XENOMAI_${_extralib_u}_LIBRARY)
-      add_library(Xenomai::${_extralib} INTERFACE IMPORTED)
-
-      set_target_properties(Xenomai::${_extralib} PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/${_extralib_l}"
-        INTERFACE_LINK_LIBRARIES "-l${_extralib_l};${XENOMAI_COPPERPLATE_LIBRARY};${_xenomai_modecheck};${_xenomai_libs}"
+      set_target_properties(xenomai::posix PROPERTIES
+        INTERFACE_LINK_LIBRARIES "xenomai::mercury"
       )
     endif()
-  endforeach(_extralib)
+  endif()
+
+  if (NOT TARGET xenomai::legacy_bootstrap AND EXISTS "${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap.o" AND EXISTS "${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap-pic.o")
+    # Create imported target xenomai::legacy_bootstrap
+    add_library(xenomai::legacy_bootstrap INTERFACE IMPORTED)
+
+    set_target_properties(xenomai::legacy_bootstrap PROPERTIES
+      INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap-pic.o>;\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap.o>"
+    )
+
+    # Create imported target xenomai::legacy_bootstrap_wrap
+    add_library(xenomai::legacy_bootstrap_wrap INTERFACE IMPORTED)
+
+    set_target_properties(xenomai::legacy_bootstrap_wrap PROPERTIES
+      INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list=${__XENOMAI_LIBRARY_PATH}/dynlist.ld>"
+    )
+  endif()
+
+  if (NOT TARGET xenomai::copperplate AND XENOMAI_COPPERPLATE_LIBRARY)
+    if (TARGET xenomai::cobalt)
+      # Create imported target xenomai::copperplate
+      add_library(xenomai::copperplate SHARED IMPORTED)
+      set_target_properties(xenomai::copperplate PROPERTIES
+        INTERFACE_LINK_LIBRARIES "xenomai::cobalt"
+        IMPORTED_LOCATION "${XENOMAI_COPPERPLATE_LIBRARY}"
+      )
+    elseif(TARGET xenomai::mercury)
+      # Create imported target xenomai::copperplate
+      add_library(xenomai::copperplate SHARED IMPORTED)
+      set_target_properties(xenomai::copperplate PROPERTIES
+        INTERFACE_LINK_LIBRARIES "xenomai::mercury"
+        IMPORTED_LOCATION "${XENOMAI_COPPERPLATE_LIBRARY}"
+      )
+    endif()
+  endif()
+
+  foreach(_skin Vxworks Psos Alchemy Smokey)
+    string(TOLOWER ${_skin} _lbname)
+    string(TOUPPER ${_skin} _ubname)
+
+    if (TARGET xenomai::copperplate AND NOT TARGET xenomai::${_lbname} AND XENOMAI_${_ubname}_LIBRARY)
+      add_library(xenomai::${_lbname} SHARED IMPORTED)
+
+      set_target_properties(xenomai::${_lbname} PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/${_lbname}"
+        INTERFACE_LINK_LIBRARIES "xenomai::copperplate"
+        IMPORTED_LOCATION "${XENOMAI_${_ubname}_LIBRARY}"
+      )
+    endif()
+  endforeach()
+
+  unset(_lbname)
+  unset(_ubname)
+  unset(_skin)
+  cmake_policy(POP)
 endif()
 
-unset(_xenomai_libs)
-unset(_extralib_l)
-unset(_extralib_u)
-unset(_extralib)
-#unset(__XENOMAI_LIBRARY_PATH)
 unset(__XENOMAI_COMPILE_DEFINITIONS)
 unset(__XENOMAI_INCLUDE_DIRS)
 unset(__XENOMAI_LINK_LIBRARIES)
+
+if(NOT XENOMAI_FOUND)
+  return()
+endif()
+
+if(CMAKE_VERSION VERSION_LESS 3.5)
+include(CMakeParseArguments)
+endif()
+
+function(xenomai_target_bootstrap target)
+
+  set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
+  # __real_main?
+  file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
+  file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
+  file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
+
+  get_target_property(ttype ${target} TYPE)
+
+  cmake_parse_arguments(XBS "NO_FALLBACK" "MAIN;MAIN_WRAP" "SKINS" ${ARGN})
+  set(_errors)
+
+  if(XBS_MAIN AND NOT XBS_MAIN STREQUAL "NONE" AND NOT XBS_MAIN STREQUAL "SOURCE" AND NOT XBS_MAIN STREQUAL "PRECOMPILED")
+    set(_errors ${_errors} "MAIN only support the values NONE, SOURCE and PRECOMPILED")
+  endif()
+  if(XBS_MAIN_WRAP AND NOT XBS_MAIN_WRAP STREQUAL "NONE" AND NOT XBS_MAIN_WRAP STREQUAL "MACRO" AND NOT XBS_MAIN_WRAP STREQUAL "LINKER")
+    set(_errors ${_errors} "XBS_MAIN_WRAP only support the values NONE, MACRO and LINKER")
+  endif()
+
+  # the default is not working on CMake 3.0, so fallback to
+  # the precompiled objects unless this was disabled
+  if(CMAKE_VERSION VERSION_LESS 3.1)
+    if(NOT XBS_MAIN OR XBS_MAIN STREQUAL "NONE" OR XBS_MAIN STREQUAL "SOURCE")
+      if(XBS_NO_FALLBACK)
+        set(_errors ${_errors} "MAIN NONE and MAIN SOURCE need atleast CMake 3.1")
+      else()
+        if(ttype STREQUAL EXECUTABLE)
+          message(WARNING "xenomai_target_bootstrap: setting MAIN PRECOMPILED for ${target} (CMake Version less than 3.1)")
+        endif()
+        set(XBS_MAIN "PRECOMPILED")
+          if(NOT XBS_MAIN_WRAP OR XBS_MAIN_WRAP STREQUAL "NONE" OR XBS_MAIN_WRAP STREQUAL "MACRO")
+            set(XBS_MAIN_WRAP "LINKER")
+            if(ttype STREQUAL EXECUTABLE)
+            message(WARNING "xenomai_target_bootstrap: setting XBS_MAIN_WRAP LINKER for ${target} (CMake Version less than 3.1)")
+          endif()
+          endif()
+      endif()
+    endif()
+  endif()
+
+  if(_errors)
+    message(SEND_ERROR "xenomai_target_bootstrap: ${_errors}")
+    return()
+  endif()
+
+  if(XBS_MAIN STREQUAL "SOURCE")
+    target_sources(${target} PRIVATE
+      "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
+      "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>"
+    )
+
+  elseif(XBS_MAIN STREQUAL "PRECOMPILED")
+    target_link_libraries(${target} PRIVATE
+      xenomai::legacy_bootstrap
+    )
+
+  else()
+    target_sources(${target} PRIVATE
+        "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
+      "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>"
+    )
+
+  endif()
+
+  if(XBS_MAIN_WRAP STREQUAL "MACRO")
+    target_compile_definitions(${target} PRIVATE
+        $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>
+    )
+
+  elseif(XBS_MAIN_WRAP STREQUAL "LINKER")
+    target_link_libraries(${target} PRIVATE
+      xenomai::legacy_bootstrap_wrap
+    )
+  endif()
+
+  set(_skins)
+  foreach(skin ${XBS_SKINS})
+    set(_skins ${_skins} "xenomai::${skin}")
+  endforeach()
+
+  if(_skins)
+    target_link_libraries(${target} PRIVATE
+      ${_skins}
+    )
+  endif()
+endfunction()
