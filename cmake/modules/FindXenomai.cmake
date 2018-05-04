@@ -15,34 +15,34 @@
 #
 # Xenomai Frameworks, only one will be available
 #
-# ``xenomai::cobalt``
+# ``Xenomai::cobalt``
 #   The Xenomai Framework using the realtime Dual-Kernel. This
 #   is also a skin, but does never include further targets
 #   automatically
-# ``xenomai::mercury``
+# ``Xenomai::mercury``
 #   The Xenomai Framework using regular Linux
 #   This one should not be used directly
 #
 # Xenomai optional modules
 #
-# ``xenomai::modechk``
+# ``Xenomai::modechk``
 #   The optional modecheck library for the realtime Dual-Kernel
-# ``xenomai::bootstrap``
+# ``Xenomai::bootstrap``
 #   Bootstrap code to initialise Xenomai
 #   Prefer to live without it if possible (TODO: Readme)
 #
 # Xenomai skins
 #
-# ``xenomai::posix``
+# ``Xenomai::posix``
 #   Posix skin for the detected Xenomai kernel
-# ``xenomai::vxworks``, ``xenomai::psos``, ``xenomai::alchemy``, `xenomai::smokey``
+# ``Xenomai::vxworks``, ``Xenomai::psos``, ``Xenomai::alchemy``, `Xenomai::smokey``
 #   Diverse Realtime Skins for Xenomai
 #
-# The ``xenomai::posix`` target and other skins check the variable
+# The ``Xenomai::posix`` target and other skins check the variable
 # ``XENOMAI_SKIP_MODECHECK``, if it does not resolve to true,
 # then the target will include the modecheck library if available.
 #
-# The ``xenomai::cobalt`` target will never include the modecheck or bootstrap library.
+# The ``Xenomai::cobalt`` target will never include the modecheck or bootstrap library.
 #
 #  
 # Result variables
@@ -84,11 +84,11 @@
 #     # Use whatever Xenomai kernel is avaiable,
 #     # use modecheck library if available
 #     add_executable(xenomai_anykernel foo.cc)
-#     target_link_libraries(xenomai_anykernel xenomai::xenomai)
+#     target_link_libraries(xenomai_anykernel Xenomai::xenomai)
 #
 #     # depend on Cobalt, fail if this kernel is missing
 #     add_executable(xenomai_cobalt foo.cc)
-#     target_link_libraries(xenomai_cobalt xenomai::cobalt)
+#     target_link_libraries(xenomai_cobalt Xenomai::cobalt)
 #
 # Minimal required CMake Version is 3.0,
 # several features are only fully usable with 3.1
@@ -270,11 +270,11 @@ if(XENOMAI_FOUND)
   endif()
 
 
-  if (NOT TARGET xenomai::cobalt AND XENOMAI_COBALT_LIBRARY)
+  if (NOT TARGET Xenomai::cobalt AND XENOMAI_COBALT_LIBRARY)
     message("d${XENOMAI_COBALT_LIBRARY}")
-    add_library(xenomai::cobalt SHARED IMPORTED)
+    add_library(Xenomai::cobalt SHARED IMPORTED)
 
-    set_target_properties(xenomai::cobalt PROPERTIES
+    set_target_properties(Xenomai::cobalt PROPERTIES
       INTERFACE_COMPILE_DEFINITIONS "__COBALT__"
       INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/cobalt;${XENOMAI_INCLUDE_DIR}"
       INTERFACE_LINK_LIBRARIES "${_threadlib};-lrt"
@@ -283,19 +283,19 @@ if(XENOMAI_FOUND)
     )
   endif()
 
-  if (NOT TARGET xenomai::modechk AND XENOMAI_MODECHK_LIBRARY)
-    add_library(xenomai::modechk SHARED IMPORTED)
+  if (NOT TARGET Xenomai::modechk AND XENOMAI_MODECHK_LIBRARY)
+    add_library(Xenomai::modechk SHARED IMPORTED)
 
-    set_target_properties(xenomai::modechk PROPERTIES
+    set_target_properties(Xenomai::modechk PROPERTIES
       INTERFACE_LINK_LIBRARIES "-Wl,@${__XENOMAI_LIBRARY_PATH}/modechk.wrappers;${_threadlib};-lrt"
       IMPORTED_LOCATION "${XENOMAI_MODECHK_LIBRARY}"
     )
   endif()
 
-  if (NOT TARGET xenomai::mercury AND XENOMAI_MERCURY_LIBRARY)
-    add_library(xenomai::mercury SHARED IMPORTED)
+  if (NOT TARGET Xenomai::mercury AND XENOMAI_MERCURY_LIBRARY)
+    add_library(Xenomai::mercury SHARED IMPORTED)
 
-    set_target_properties(xenomai::mercury PROPERTIES
+    set_target_properties(Xenomai::mercury PROPERTIES
       INTERFACE_COMPILE_DEFINITIONS "__MERCURY__"
       INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/mercury;${XENOMAI_INCLUDE_DIR}"
       INTERFACE_LINK_LIBRARIES "${_threadlib};-lrt"
@@ -303,54 +303,54 @@ if(XENOMAI_FOUND)
     )
   endif()
 
-  if (NOT TARGET xenomai::posix)
-    if (TARGET xenomai::cobalt)
-      # Create imported target xenomai::posix
+  if (NOT TARGET Xenomai::posix)
+    if (TARGET Xenomai::cobalt)
+      # Create imported target Xenomai::posix
       message("p${XENOMAI_COBALT_LIBRARY}")
-      add_library(xenomai::posix INTERFACE IMPORTED)
+      add_library(Xenomai::posix INTERFACE IMPORTED)
 
-      set_target_properties(xenomai::posix PROPERTIES
-        INTERFACE_LINK_LIBRARIES "xenomai::cobalt"
+      set_target_properties(Xenomai::posix PROPERTIES
+        INTERFACE_LINK_LIBRARIES "Xenomai::cobalt"
       )
-    elseif(TARGET xenomai::mercury)
-      # Create imported target xenomai::posix
-      add_library(xenomai::posix INTERFACE IMPORTED)
+    elseif(TARGET Xenomai::mercury)
+      # Create imported target Xenomai::posix
+      add_library(Xenomai::posix INTERFACE IMPORTED)
 
-      set_target_properties(xenomai::posix PROPERTIES
-        INTERFACE_LINK_LIBRARIES "xenomai::mercury"
+      set_target_properties(Xenomai::posix PROPERTIES
+        INTERFACE_LINK_LIBRARIES "Xenomai::mercury"
       )
     endif()
   endif()
 
-  if (NOT TARGET xenomai::legacy_bootstrap AND EXISTS "${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap.o" AND EXISTS "${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap-pic.o")
-    # Create imported target xenomai::legacy_bootstrap
-    add_library(xenomai::legacy_bootstrap INTERFACE IMPORTED)
+  if (NOT TARGET Xenomai::legacy_bootstrap AND EXISTS "${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap.o" AND EXISTS "${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap-pic.o")
+    # Create imported target Xenomai::legacy_bootstrap
+    add_library(Xenomai::legacy_bootstrap INTERFACE IMPORTED)
 
-    set_target_properties(xenomai::legacy_bootstrap PROPERTIES
+    set_target_properties(Xenomai::legacy_bootstrap PROPERTIES
       INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap-pic.o>;\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${__XENOMAI_LIBRARY_PATH}/xenomai/bootstrap.o>"
     )
 
-    # Create imported target xenomai::legacy_bootstrap_wrap
-    add_library(xenomai::legacy_bootstrap_wrap INTERFACE IMPORTED)
+    # Create imported target Xenomai::legacy_bootstrap_wrap
+    add_library(Xenomai::legacy_bootstrap_wrap INTERFACE IMPORTED)
 
-    set_target_properties(xenomai::legacy_bootstrap_wrap PROPERTIES
+    set_target_properties(Xenomai::legacy_bootstrap_wrap PROPERTIES
       INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list=${__XENOMAI_LIBRARY_PATH}/dynlist.ld>"
     )
   endif()
 
-  if (NOT TARGET xenomai::copperplate AND XENOMAI_COPPERPLATE_LIBRARY)
-    if (TARGET xenomai::cobalt)
-      # Create imported target xenomai::copperplate
-      add_library(xenomai::copperplate SHARED IMPORTED)
-      set_target_properties(xenomai::copperplate PROPERTIES
-        INTERFACE_LINK_LIBRARIES "xenomai::cobalt"
+  if (NOT TARGET Xenomai::copperplate AND XENOMAI_COPPERPLATE_LIBRARY)
+    if (TARGET Xenomai::cobalt)
+      # Create imported target Xenomai::copperplate
+      add_library(Xenomai::copperplate SHARED IMPORTED)
+      set_target_properties(Xenomai::copperplate PROPERTIES
+        INTERFACE_LINK_LIBRARIES "Xenomai::cobalt"
         IMPORTED_LOCATION "${XENOMAI_COPPERPLATE_LIBRARY}"
       )
-    elseif(TARGET xenomai::mercury)
-      # Create imported target xenomai::copperplate
-      add_library(xenomai::copperplate SHARED IMPORTED)
-      set_target_properties(xenomai::copperplate PROPERTIES
-        INTERFACE_LINK_LIBRARIES "xenomai::mercury"
+    elseif(TARGET Xenomai::mercury)
+      # Create imported target Xenomai::copperplate
+      add_library(Xenomai::copperplate SHARED IMPORTED)
+      set_target_properties(Xenomai::copperplate PROPERTIES
+        INTERFACE_LINK_LIBRARIES "Xenomai::mercury"
         IMPORTED_LOCATION "${XENOMAI_COPPERPLATE_LIBRARY}"
       )
     endif()
@@ -360,12 +360,12 @@ if(XENOMAI_FOUND)
     string(TOLOWER ${_skin} _lbname)
     string(TOUPPER ${_skin} _ubname)
 
-    if (TARGET xenomai::copperplate AND NOT TARGET xenomai::${_lbname} AND XENOMAI_${_ubname}_LIBRARY)
-      add_library(xenomai::${_lbname} SHARED IMPORTED)
+    if (TARGET Xenomai::copperplate AND NOT TARGET Xenomai::${_lbname} AND XENOMAI_${_ubname}_LIBRARY)
+      add_library(Xenomai::${_lbname} SHARED IMPORTED)
 
-      set_target_properties(xenomai::${_lbname} PROPERTIES
+      set_target_properties(Xenomai::${_lbname} PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${XENOMAI_INCLUDE_DIR}/${_lbname}"
-        INTERFACE_LINK_LIBRARIES "xenomai::copperplate"
+        INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
         IMPORTED_LOCATION "${XENOMAI_${_ubname}_LIBRARY}"
       )
     endif()
@@ -443,7 +443,7 @@ function(xenomai_target_bootstrap target)
 
   elseif(XBS_MAIN STREQUAL "PRECOMPILED")
     target_link_libraries(${target} PRIVATE
-      xenomai::legacy_bootstrap
+      Xenomai::legacy_bootstrap
     )
 
   else()
@@ -461,13 +461,13 @@ function(xenomai_target_bootstrap target)
 
   elseif(XBS_MAIN_WRAP STREQUAL "LINKER")
     target_link_libraries(${target} PRIVATE
-      xenomai::legacy_bootstrap_wrap
+      Xenomai::legacy_bootstrap_wrap
     )
   endif()
 
   set(_skins)
   foreach(skin ${XBS_SKINS})
-    set(_skins ${_skins} "xenomai::${skin}")
+    set(_skins ${_skins} "Xenomai::${skin}")
   endforeach()
 
   if(_skins)

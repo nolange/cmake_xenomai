@@ -1,0 +1,79 @@
+#----------------------------------------------------------------
+# Generated CMake target import file.
+#----------------------------------------------------------------
+
+# Commands may need to know the format version.
+set(CMAKE_IMPORT_FILE_VERSION 1)
+
+# Import target "Xenomai::cobalt" for configuration ""
+set_property(TARGET Xenomai::cobalt APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(Xenomai::cobalt PROPERTIES
+  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcobalt.so"
+  IMPORTED_SONAME_NOCONFIG "libcobalt.so"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS Xenomai::cobalt )
+list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::cobalt "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcobalt.so" )
+
+# Import target "Xenomai::modechk" for configuration ""
+set_property(TARGET Xenomai::modechk APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(Xenomai::modechk PROPERTIES
+  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libmodechk.so"
+  IMPORTED_SONAME_NOCONFIG "libmodechk.so"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS Xenomai::modechk )
+list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::modechk "${_IMPORT_PREFIX}/${_xenomai_libdir}/libmodechk.so" )
+
+# Import target "Xenomai::copperplate" for configuration ""
+set_property(TARGET Xenomai::copperplate APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(Xenomai::copperplate PROPERTIES
+  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcopperplate.so"
+  IMPORTED_SONAME_NOCONFIG "libcopperplate.so"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS Xenomai::copperplate )
+list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::copperplate "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcopperplate.so" )
+
+# Import target "Xenomai::vxworks" for configuration ""
+set_property(TARGET Xenomai::vxworks APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(Xenomai::vxworks PROPERTIES
+  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libvxworks.so"
+  IMPORTED_SONAME_NOCONFIG "libvxworks.so"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS Xenomai::vxworks )
+list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::vxworks "${_IMPORT_PREFIX}/${_xenomai_libdir}/libvxworks.so" )
+
+# Import target "Xenomai::psos" for configuration ""
+set_property(TARGET Xenomai::psos APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(Xenomai::psos PROPERTIES
+  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libpsos.so"
+  IMPORTED_SONAME_NOCONFIG "libpsos.so"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS Xenomai::psos )
+list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::psos "${_IMPORT_PREFIX}/${_xenomai_libdir}/libpsos.so" )
+
+# Import target "Xenomai::alchemy" for configuration ""
+set_property(TARGET Xenomai::alchemy APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(Xenomai::alchemy PROPERTIES
+  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libalchemy.so"
+  IMPORTED_SONAME_NOCONFIG "libalchemy.so"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS Xenomai::alchemy )
+list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::alchemy "${_IMPORT_PREFIX}/${_xenomai_libdir}/libalchemy.so" )
+
+# Import target "Xenomai::smokey" for configuration ""
+set_property(TARGET Xenomai::smokey APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
+set_target_properties(Xenomai::smokey PROPERTIES
+  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libsmokey.so"
+  IMPORTED_SONAME_NOCONFIG "libsmokey.so"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS Xenomai::smokey )
+list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::smokey "${_IMPORT_PREFIX}/${_xenomai_libdir}/libsmokey.so" )
+
+# Commands beyond this point should not need to know the version.
+set(CMAKE_IMPORT_FILE_VERSION)

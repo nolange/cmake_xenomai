@@ -14,53 +14,133 @@ to leave the full flexibility to the user. For example the Thread support has to
 The integration aims to be "modern CMake", means you call `find_package(Xenomai)`, which defines import libraries you can
 use to describe dependencies. Use of variables is not recommended, and exisiting variables might be removed at any time.
 
-An example project would look like this:
+Support is provided in 2 variants, one as a set of config-files that can be installed with
+an Xenomai installation. The other is a FindXenomai script, which can be included in projects
+(or upstreamed to CMake).
+
+The config-files are highly preferable, ideally this will end up upstream in Xenomai.
+
+Minimal required CMake version is 3.0 (because of `INTERFACE` libraries),
+but full functionality required version 3.1.
+
+# Installation
+
+## Config-files
+
+Those come with placeholders, which get replaced through the included script.
+You would need to install the config files into `<libdir>/cmake/xenomai` of your
+(potentially staged) xenomai installation.
+
+Example for a custom buildroot installation:
+
+```bash
+TARGETDIR=$HOME/buildroot/staging/usr/xenomai/lib/cmake/xenomai
+mkdir -p $TARGETDIR
+config/install_cmakeconfig.sh --prefix=/usr/xenomai --includedir=/usr/include/xenomai --version 3.0.4 --bitness 8 -- $TARGETDIR
+```
+
+## FindXenomai script
+
+This needs to be found by CMake, typically you copy the directory `cmake` to your project,
+and then adjust the path CMake uses to search for `Modules`.
+
+```bash
+cp -r cmake <your_project_dir>
+```
+
+In your `CMakeList.txt` file, you add this early:
 
 ```cmake
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-
-# Set the path so FindXenomai.cmake can be resolved
+cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+```
+
+## Bootstrap header
+
+To allow multiple variants of creating bootstrapping code,
+a header is included, and needs to be found with
+
+```cxx
+#include <xenomai/bootstrap-template.h>
+```
+
+that means you either have to copy it into the correcty directory of your xenomai
+installation `<includedir>/xenomai` od you have to make it available in some
+other directory and add this to the include path.
+
+# Usage
+
+## Basic recommended usage
+
+This is the authors recommended usage of the bootstrapping code.
+Further variants will be described.
+
+To allow Xenomai to consume commandline arguments (remove them so the application does not see them),
+you need to retrieve the modified `argv`.
+
+This can be done by calling a function defined by the boostrap code:
+
+```c
+#if !defined(__COBALT__) && !defined(__MERCURY__)
+static int xenomai_bootstrap_getargv(int *argc, char *const** argv)
+{
+    (void)argc; (void)argv;
+    return 0;
+}
+#else
+int xenomai_bootstrap_getargv(int *argc, char *const** argv);
+#endif
+
+int main(int argc, char *const argv[], char * const envp[])
+{
+
+    xenomai_bootstrap_getargv(&argc, &argv);
+...
+```
+
+
+```cmake
+# this bootstrapping variant requires CMake 3.1
+cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+
+# Set the path so FindXenomai.cmake can be resolved (only if not using config files)
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+
+# potential option to compile with/out xenomai
+set(CMAKE_USE_XENOMAI true)
 
 project(myproject VERSION 0.1)
 
 # most applications will need threads
 set(THREADS_PREFER_PTHREAD_FLAG true)
 find_package(Threads REQUIRED)
-# skip the modecheck library (only cobalt kernels)
-set(XENOMAI_SKIP_MODECHECK true)
-# and we require Xenomai 3 or higher
-find_package(Xenomai 3.0 REQUIRED)
+
+if(CMAKE_USE_XENOMAI)
+	# we require Xenomai 3 or higher
+	find_package(Xenomai 3.0 REQUIRED)
+endif()
 
 add_executable(myexec
 	src/myexec.c
-# this is the xenomai bootstrap, likely is going to change
-	src/bootstrap.c
 )
 
-# use Cobalt without Posix Wrappings
-target_link_libraries(myexec PRIVATE
-	Xenomai::Cobalt Xenomai::ModeChk Threads::Threads rt
-)
+if(CMAKE_USE_XENOMAI)
+	# use posix skin
+	target_link_libraries(myexec
+	    PRIVATE
+	    Xenomai::posix
+	)
 
-add_executable(anotherexec
-# this one is smart enough to call xenomai_init if available + necessary
-	src/another_withownbootstrap.c
-)
-
-# without xenomai, its just built as regular posix
-# with xenomai, it can use Mercury or Cobalt
-if (XENOMAI_FOUND)
-target_link_libraries(anotherexec PRIVATE
-	Xenomai::Posix
-)
+	# add bootstrap code
+	xenomai_target_bootstrap(myexec)
 endif()
 
-# These are always needed, cant depend on Xenomai pulling the dependencies in
-# (and it does not for that reason)
-target_link_libraries(anotherexec PRIVATE
-	Threads::Threads rt
-)	
+# always link all libraries that provide used functions explicitely
+# dont depend on other modules pulling them in automatically!
+target_link_libraries(myexec
+    PRIVATE
+    Threads::Threads rt
+) 
 ```
 
 Configuration allows specifying a toolchain/build environment. This is an real example using a [Buildroot](https://buildroot.org/) installation:
@@ -71,6 +151,9 @@ cmake -DCMAKE_TOOLCHAIN_FILE=$HOME/buildroot/host/share/buildroot/toolchainfile.
 make -j4 VERBOSE=1
 ```
 
+In case xenomai is installed in a location CMake does not automatically
+search, you need to add the path to the `<prefix>`, like `-DXenomai_DIR=$HOME/buildroot/staging/usr/xenomai`.
+Under some circumstances its necessary to specify the full path to config-files: `-DXenomai_DIR=$HOME/buildroot/staging/usr/xenomai/lib/cmake/xenomai`.
 
 # bootstrapping
 
@@ -103,7 +186,8 @@ The boostrapping code does multiple tasks
 -   promote the main thread to realtime (otherwise most cobalt calls will fail)
 -   a wrapper that interposes on the ragular `main` function and call it with the `reduced argv`
 
-The first three points can be called the `early initialisation` happen relatively early with gcc's attribute `constructor(220)`, see the file `include/boilerplate/setup.h`.
+The first three points can be called the `early initialisation` happen relatively early with gcc's
+attribute `constructor(220)`, see the file `include/boilerplate/setup.h`.
 Specifically it runs before normal (non-priority) `constructor` functions and C++ global constructors, which thus could depend on Xenomai already been initialised. A fully explicit call to `xenomai_init` from the `main` function would have the downside of not supporting these constructs.
 
 The wrapping of the main function is (perhaps just subjectively) pretty complicated. My opionion (nolange) would be to

@@ -10,7 +10,7 @@ set(TEST_FINDXENOMAI false)
 if(TEST_FINDXENOMAI)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/../cmake/modules")
 endif()
-find_package(xenomai REQUIRED)
+find_package(Xenomai REQUIRED)
 
 function(debug_print_variables)
 	get_cmake_property(_variableNames VARIABLES)

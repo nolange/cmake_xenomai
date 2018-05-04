@@ -135,13 +135,13 @@ endforeach()
 
 install(EXPORT xenomai-targets
   DESTINATION "${_XENOMAI_CMAKEDIR}"
-  NAMESPACE xenomai::
+  NAMESPACE Xenomai::
   COMPONENT xenomai-export)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/xenomai-config-version.cmake
-	VERSION 1.2.3
-	COMPATIBILITY SameMajorVersion
+	VERSION "@CMAKE_VERSION_CODE@"
+	COMPATIBILITY AnyNewerVersion
 )
 configure_package_config_file(
     xenomai-config.cmake.in
