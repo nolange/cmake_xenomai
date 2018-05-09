@@ -1,4 +1,5 @@
 #!/bin/sh
+SRCDIR=$(dirname "$(readlink -f "$0")")
 printusage() {
 cat << EOF
 Usage: "$(basename $0)" [OPTION]... [--] TARGETPATH
@@ -100,6 +101,8 @@ lib_to_prefix=$(torelpath "$libdir" "$prefix")
 libdir_rel=$(torelpath "$prefix" "$libdir")
 includedir_rel=$(torelpath "$prefix" "$includedir")
 
+(
+  cd "$SRCDIR"
 for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-config-version.cmake.in xenomai-macros.cmake.in; do
   tname=${template%.in}
   tname=${tname##*/}
@@ -109,5 +112,4 @@ for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfi
     -e 's,@CMAKE_VERSION_CODE@,'"$version"',g' \
     -e 's,@CMAKE_SIZEOF_VOID_P@,'"$bitness"',g' ${template} >"${targetpath}"/${tname} || exit 20
 done
-
-
+)
