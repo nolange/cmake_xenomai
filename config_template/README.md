@@ -2,6 +2,7 @@
 Create the templates that can later be installed.
 
 ```bash
+mkdir temp
 ./create_template.sh temp
 ```
 

@@ -1,4 +1,5 @@
 #!/bin/sh
+SRCDIR=$(dirname "$(readlink -f "$0")")
 printusage() {
 cat << EOF
 Usage: "$(basename $0)" [OPTION]... [--] TARGETPATH
@@ -18,6 +19,9 @@ Options:
 
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
+
+  --version
+  --bitness
 EOF
   if [ -n "$1" ]; then exit $1; fi
 }
@@ -37,6 +41,7 @@ libdir='${exec_prefix}'/lib
 includedir='${prefix}'/include
 version='@CMAKE_VERSION_CODE@'
 bitness='@CMAKE_SIZEOF_VOID_P@'
+do_version=
 
 while true ; do
   case "$1" in
@@ -45,7 +50,7 @@ while true ; do
     --exec-prefix) exec_prefix=$2; shift ;;
     --libdir) libdir=$2; shift ;;
     --includedir) includedir=$2; shift ;;
-    --version) version=$2; shift ;;
+    --version) version=$2; do_version=1; shift ;;
     --bitness) bitness=$2; shift ;;
 
     --help) printusage; exit 0 ;;
@@ -100,14 +105,20 @@ lib_to_prefix=$(torelpath "$libdir" "$prefix")
 libdir_rel=$(torelpath "$prefix" "$libdir")
 includedir_rel=$(torelpath "$prefix" "$includedir")
 
-for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-config-version.cmake.in xenomai-macros.cmake.in; do
+TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
+(
+  cd "$SRCDIR"
+for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-macros.cmake.in ${do_version:+xenomai-config-version.cmake.in}; do
   tname=${template%.in}
   tname=${tname##*/}
   sed -e 's,@prefix@,'"$prefix"',g' \
     -e 's,@libdir@,'"$libdir"',g' \
     -e 's,@includedir@,'"$includedir"',g' \
+    -e 's,@lib_to_prefix@,'"$lib_to_prefix"',g' \
+    -e 's,@libdir_rel@,'"$libdir_rel"',g' \
+    -e 's,@includedir_rel@,'"$includedir_rel"',g' \
     -e 's,@CMAKE_VERSION_CODE@,'"$version"',g' \
-    -e 's,@CMAKE_SIZEOF_VOID_P@,'"$bitness"',g' ${template} >"${targetpath}"/${tname} || exit 20
+    -e 's,@CMAKE_SIZEOF_VOID_P@,'"$bitness"',g'  >"${TEMPDIR}"/${tname} "${template}" || exit 20
 done
-
-
+)
+cp -r $TEMPDIR/. "${targetpath}"

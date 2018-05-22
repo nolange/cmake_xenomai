@@ -1,5 +1,3 @@
-file(RELATIVE_PATH _xenomai_pref_from_lib "~#libdir#~" "~#prefix#~")
-
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
@@ -10,9 +8,8 @@ if(CMAKE_VERSION VERSION_LESS 3.1)
 	set(_xenomai_threadlib "${CMAKE_THREAD_LIBS_INIT}")
 endif()
 
-# Calculate relative paths, dont know how to do this in autoconf
-file(RELATIVE_PATH _xenomai_includedir "~#prefix#~" "~#includedir#~")
-file(RELATIVE_PATH _xenomai_libdir "~#prefix#~" "~#libdir#~")
+set(_xenomai_includedir "~#includedir_rel#~")
+set(_xenomai_libdir "~#libdir_rel#~")
 
 include(${CMAKE_CURRENT_LIST_DIR}/xenomai-targets.cmake)
 check_required_components(xenomai)
@@ -21,4 +18,3 @@ include(${CMAKE_CURRENT_LIST_DIR}/xenomai-macros.cmake)
 unset(_xenomai_threadlib)
 unset(_xenomai_libdir)
 unset(_xenomai_includedir)
-unset(_xenomai_pref_from_lib)
