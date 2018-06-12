@@ -105,13 +105,17 @@ lib_to_prefix=$(torelpath "$libdir" "$prefix")
 libdir_rel=$(torelpath "$prefix" "$libdir")
 includedir_rel=$(torelpath "$prefix" "$includedir")
 
+core_upper=$(printf "%s" $core | tr '[a-z]' '[A-Z]')
+
 TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
 (
   cd "$SRCDIR"
 for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-macros.cmake.in ${do_version:+xenomai-config-version.cmake.in}; do
   tname=${template%.in}
   tname=${tname##*/}
-  sed -e 's,@prefix@,'"$prefix"',g' \
+  sed -e 's,@core@,'"$core"',g' \
+    -e 's,@core_upper@,'"$core_upper"',g' \
+    -e 's,@prefix@,'"$prefix"',g' \
     -e 's,@libdir@,'"$libdir"',g' \
     -e 's,@includedir@,'"$includedir"',g' \
     -e 's,@lib_to_prefix@,'"$lib_to_prefix"',g' \
