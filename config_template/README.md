@@ -1,4 +1,3 @@
-
 Create the templates that can later be installed.
 
 ```bash
@@ -19,7 +18,6 @@ Example for a custom configuration:
 mkdir /tmp/cobalt
 ./install_cmakeconfig.sh --prefix=/usr/xenomai --includedir=/usr/include/xenomai --version 3.0.4 --bitness 8 -- /tmp/cobalt
 ```
-
 
 Example for debians defaults;
 

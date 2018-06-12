@@ -6,13 +6,13 @@ and hopefully in the longterm be added to upstream CMake.
 # Concepts
 
 the use of the Module is aimed to be largely optional, means projects should be able to
-buildable without Xenomai with minimal (or no) changes.
+build-able without Xenomai with minimal (or no) changes.
 This has the effect that potentially required flags or libraries for Xenomai aren't provided automatically,
-to leave the full flexibility to the user. For example the Thread support has to be explicitely stated and linking to
+to leave the full flexibility to the user. For example the Thread support has to be explicitly stated and linking to
 `-librt` is a good idea, but both are not absolutely necessary for every project so they are left out.
 
 The integration aims to be "modern CMake", means you call `find_package(Xenomai)`, which defines import libraries you can
-use to describe dependencies. Use of variables is not recommended, and exisiting variables might be removed at any time.
+use to describe dependencies. Use of variables is not recommended, and existing variables might be removed at any time.
 
 Support is provided in 2 variants, one as a set of config-files that can be installed with
 an Xenomai installation. The other is a FindXenomai script, which can be included in projects
@@ -29,7 +29,7 @@ but full functionality required version 3.1.
 
 Those come with placeholders, which get replaced through the included script.
 You would need to install the config files into `<libdir>/cmake/xenomai` of your
-(potentially staged) xenomai installation.
+(potentially staged) Xenomai installation.
 
 Example for a custom buildroot installation:
 
@@ -39,7 +39,7 @@ mkdir -p $TARGETDIR
 config/install_cmakeconfig.sh --prefix=/usr/xenomai --includedir=/usr/include/xenomai --version 3.0.4 --bitness 8 -- $TARGETDIR
 ```
 
-## FindXenomai script
+## FindXenomai script (Currently OUTDATED!)
 
 This needs to be found by CMake, typically you copy the directory `cmake` to your project,
 and then adjust the path CMake uses to search for `Modules`.
@@ -64,8 +64,8 @@ a header is included, and needs to be found with
 #include <xenomai/bootstrap-template.h>
 ```
 
-that means you either have to copy it into the correcty directory of your xenomai
-installation `<includedir>/xenomai` od you have to make it available in some
+that means you either have to copy it into the correctly directory of your xenomai
+installation `<includedir>/xenomai` or you have to make it available in some
 other directory and add this to the include path.
 
 # Usage
@@ -78,7 +78,7 @@ Further variants will be described.
 To allow Xenomai to consume commandline arguments (remove them so the application does not see them),
 you need to retrieve the modified `argv`.
 
-This can be done by calling a function defined by the boostrap code:
+This can be done by calling a function defined by the bootstrap code:
 
 ```c
 #if !defined(__COBALT__) && !defined(__MERCURY__)
@@ -98,7 +98,6 @@ int main(int argc, char *const argv[], char * const envp[])
 ...
 ```
 
-
 ```cmake
 # this bootstrapping variant requires CMake 3.1
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
@@ -106,44 +105,50 @@ cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 # Set the path so FindXenomai.cmake can be resolved (only if not using config files)
 # set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
-# potential option to compile with/out xenomai
+# potential define an option to compile with/out xenomai
 set(CMAKE_USE_XENOMAI true)
 
 project(myproject VERSION 0.1)
 
-# most applications will need threads
+# most applications will need threads anyway
 set(THREADS_PREFER_PTHREAD_FLAG true)
 find_package(Threads REQUIRED)
 
+unset(USE_COBALT)
 if(CMAKE_USE_XENOMAI)
-	# we require Xenomai 3 or higher
-	find_package(Xenomai 3.0 REQUIRED)
+    # we require Xenomai 3 or higher
+    find_package(Xenomai 3.0 REQUIRED)
+    # set a helper variable whether we can use the realtime API
+    if(TARGET Xenomai::cobalt)
+        set(USE_COBALT True)
+    endif()
 endif()
 
 add_executable(myexec
-	src/myexec.c
+    src/myexec.c
 )
 
 if(CMAKE_USE_XENOMAI)
-	# use posix skin
-	target_link_libraries(myexec
-	    PRIVATE
-	    Xenomai::posix
-	)
+    # use posix skin
+    target_link_libraries(myexec
+        PRIVATE
+        Xenomai::posix
+    )
 
-	# add bootstrap code
-	xenomai_target_bootstrap(myexec)
+    # add bootstrap code
+    xenomai_target_bootstrap(myexec)
 endif()
 
-# always link all libraries that provide used functions explicitely
-# dont depend on other modules pulling them in automatically!
+# always link all libraries that provide used functions explicitly
+# do not depend on other modules pulling them in automatically!
 target_link_libraries(myexec
     PRIVATE
     Threads::Threads rt
-) 
+)
 ```
 
-Configuration allows specifying a toolchain/build environment. This is an real example using a [Buildroot](https://buildroot.org/) installation:
+CMake Configuration allows specifying a toolchain/build environment.
+This is an real example using a [Buildroot](https://buildroot.org/) installation:
 
 ```bash
 mkdir /tmp/build; cd /tmp/build
@@ -176,7 +181,6 @@ for the boostrap code
 -   either require the application to rename the main routine to something else (predefined name).
 -   or do so in a hacky way by defining main as macro.
 
-
 ## More detailed description
 
 The boostrapping code does multiple tasks
@@ -195,23 +199,29 @@ easily be able to add the `early initialisation` to a project, while not providi
 
 some possible alternatives for the `main` wrap follow.
 
-Variant A "Linkersymbol"
+## Variant A "Linkersymbol"
+
+Has the advantage, that no macros are needed, the linker will hook up the correct function
+if available. Failure to link the correct function (like using a static library) will go unnoticed however.
 
 ```c
 int xenomai_init_getargv(int *argc, char *const** argv);
 
  __attribute__((weak)) int xenomai_init_getargv(int *argc, char *const** argv)
 {
-	return 0;
+    return 0;
 
 }
 int main(int argc, char *const argv[])
 {
-	xenomai_init_getargv(&argc, &argv);
+    xenomai_init_getargv(&argc, &argv);
 }
 ```
 
-Variant B "Macro Guard"
+## Variant B "Macro Guard"
+
+Depends on Macros Xenomai will have to define anyway for the Posix wrappers to work.
+Failure to link bootstrapping code will be visible during linking.
 
 ```c
 int xenomai_init_getargv(int *argc, char *const** argv);
@@ -219,28 +229,42 @@ int xenomai_init_getargv(int *argc, char *const** argv);
 int main(int argc, char *const argv[])
 {
 #if defined(__COBALT__) || defined(__MERCURY__)
-	xenomai_init_getargv(&argc, &argv);
+    xenomai_init_getargv(&argc, &argv);
 #endif
 }
 ```
 
-Variant C "Dont Care"
+## Variant C "Dont Care"
+
+This variant just links the bootstrap code and main will be called
+with the unaltered `argv` verctor.
 
 ```c
 int main(int argc, char *const argv[])
 {
-	/* argv might have arguments that were already consumed in early initialisation */
+    /* argv might have arguments that were already consumed in early initialisation */
 }
 ```
 
+## Variant D "Macro Wrap"
 
+the application main function will be "renamed" with a macro definition. the bootstrap-code defines the `real` main
+function.
 
+## Variant E "Linker wrap Wrap"
 
+the application main function will be "renamed" with a linker declaration, the bootstrap-code defines the `real` main
+function.
 
 # State
 
-Currently WIP, mostly tested is the Cobalt Library. The examples are building but likely wont work due to
-yet unresolved and missing "bootstrap" inititialisation
+Posix over Cobalt with the preferred bootstrap variant is tested,
+the Config-files Method should stay stable.
+
+Multiple other bootstrap variants are supported, including the original
+one with linker wrapping.
+
+Documentation is lacking, FindXenomai script out-dated
 
 # Licenses
 
