@@ -1,0 +1,45 @@
+From b1edc87641a1b1ad03f1ff1e9727f5cba7d7a7ca Mon Sep 17 00:00:00 2001
+From: Norbert Lange <norbert.lange@andritz.com>
+Date: Thu, 26 Apr 2018 11:29:34 +0200
+Subject: [PATCH 4/7] improve trace messages by fetching the program name early
+
+---
+ lib/boilerplate/setup.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/lib/boilerplate/setup.c b/lib/boilerplate/setup.c
+index 40f5fd810..bcea1cecf 100644
+--- a/lib/boilerplate/setup.c
++++ b/lib/boilerplate/setup.c
+@@ -538,6 +538,9 @@ static void __xenomai_init(int *argcp, char *const **argvp, const char *me, unsi
+ 	if (ret)
+ 		goto fail;
+ 
++	if (!me)
++		me = get_program_name();
++
+ 	trace_me("cold init from %s", me);
+ 	
+ #ifndef CONFIG_SMP
+@@ -649,16 +652,15 @@ static void _xenomai_init_ext(int *argcp, char *const **argvp, int isDso, unsign
+ 		__xenomai_init(argcp, argvp, me, flags);
+ 	} else
+ 	{
+-		me = get_program_name();
+-
+ 		if (main_init_done) {
+ 			early_warning("duplicate call from main program "
+ 				      "to %s() ignored", __func__);
+ 			early_warning("(xeno-config --no-auto-init disables implicit call)");
+ 		}
+ 
+-		__xenomai_init(argcp, argvp, me, flags);
++		__xenomai_init(argcp, argvp, NULL, flags);
+ 		main_init_done = 1;
++		me = get_program_name();
+ 	}
+ 	trace_me("%s bootstrap done", me);
+ }
+-- 
+2.17.1
+

@@ -1,0 +1,102 @@
+From 427ab11c9885c785c78d60e6ca0431b0de9a739b Mon Sep 17 00:00:00 2001
+From: Norbert Lange <norbert.lange@andritz.com>
+Date: Wed, 2 May 2018 09:59:41 +0200
+Subject: [PATCH 5/7] pass module name to xenomai_init
+
+---
+ include/xenomai/bootstrap-template.h | 10 ++++++++--
+ include/xenomai/init.h               |  2 +-
+ lib/boilerplate/setup.c              |  8 ++++----
+ 3 files changed, 13 insertions(+), 7 deletions(-)
+
+diff --git a/include/xenomai/bootstrap-template.h b/include/xenomai/bootstrap-template.h
+index 1b820cc35..c90655bc5 100644
+--- a/include/xenomai/bootstrap-template.h
++++ b/include/xenomai/bootstrap-template.h
+@@ -81,6 +81,8 @@
+  *                  Set a weak reference to the defined main function
+  * _XENOMAI_BOOTSTRAP_DSO
+  *                  Should be defined when building shared libraries
++ * _XENOMAI_BOOTSTRAP_MODNAME
++ *                  Name of the executable/shared library for tracing
+  * _XENOMAI_BOOTSTRAP_INITFLAGS
+  *                  Flags passed to the xenomai_init_ext function
+  */
+@@ -265,7 +267,7 @@ __bootstrap_ctor static void xenomai_bootstrap(void)
+ #endif
+ 
+ 
+-#if !defined(_XENOMAI_BOOTSTRAP_INITFLAGS)
++#if !defined(_XENOMAI_BOOTSTRAP_INITFLAGS) && !defined(_XENOMAI_BOOTSTRAP_MODNAME)
+ 	/* prefer previously existing functions for better backwards capability */
+ #ifdef _XENOMAI_BOOTSTRAP_DSO
+ 	xenomai_init_dso(&argc, &argv);
+@@ -276,13 +278,17 @@ __bootstrap_ctor static void xenomai_bootstrap(void)
+ 	{
+ 		int isDso = 0;
+ 		unsigned long long bflags = 0;
++		const char *modname = NULL;
+ #ifdef _XENOMAI_BOOTSTRAP_DSO
+ 		isDso = 1;
+ #endif
+ #ifdef _XENOMAI_BOOTSTRAP_INITFLAGS
+ 		bflags = _XENOMAI_BOOTSTRAP_INITFLAGS;
+ #endif
+-		xenomai_init_ext(&argc, &argv, isDso, bflags);
++#ifdef _XENOMAI_BOOTSTRAP_MODNAME
++		modname = _XENOMAI_BOOTSTRAP_MODNAME;
++#endif
++		xenomai_init_ext(&argc, &argv, isDso, modname, bflags);
+ 	}
+ #endif
+ 
+diff --git a/include/xenomai/init.h b/include/xenomai/init.h
+index cca3d4c22..6bc553c67 100644
+--- a/include/xenomai/init.h
++++ b/include/xenomai/init.h
+@@ -29,7 +29,7 @@ void xenomai_init(int *argcp, char *const **argvp);
+ 
+ void xenomai_init_dso(int *argcp, char *const **argvp);
+ 
+-void xenomai_init_ext(int *argcp, char *const **argvp, int isDso, unsigned long flags);
++void xenomai_init_ext(int *argcp, char *const **argvp, int isDso, const char *modname, unsigned long flags);
+ 
+ int xenomai_bootstrap_getargv(int *argc, char *const** argv);
+ 
+diff --git a/lib/boilerplate/setup.c b/lib/boilerplate/setup.c
+index bcea1cecf..a9c6c8df7 100644
+--- a/lib/boilerplate/setup.c
++++ b/lib/boilerplate/setup.c
+@@ -644,7 +644,7 @@ fail:
+ 	early_panic("initialization failed, %s", symerror(ret));
+ }
+ 
+-static void _xenomai_init_ext(int *argcp, char *const **argvp, int isDso, unsigned long flags)
++static void _xenomai_init_ext(int *argcp, char *const **argvp, int isDso, const char *modname, unsigned long flags)
+ {
+ 	const char *me = "DSO";
+ 	if (isDso)
+@@ -667,17 +667,17 @@ static void _xenomai_init_ext(int *argcp, char *const **argvp, int isDso, unsign
+ 
+ void xenomai_init_ext(int *argcp, char *const **argvp, int isDso, unsigned long flags)
+ {
+-	_xenomai_init_ext(argcp, argvp, isDso, flags);
++	_xenomai_init_ext(argcp, argvp, isDso, NULL, flags);
+ }
+ 
+ void xenomai_init(int *argcp, char *const **argvp)
+ {
+-	_xenomai_init_ext(argcp, argvp, 0, 0);
++	_xenomai_init_ext(argcp, argvp, 0, NULL, 0);
+ }
+ 
+ void xenomai_init_dso(int *argcp, char *const **argvp)
+ {
+-	_xenomai_init_ext(argcp, argvp, 1, 0);
++	_xenomai_init_ext(argcp, argvp, 1, NULL, 0);
+ }
+ 
+ void __trace_me(const char *fmt, ...)
+-- 
+2.17.1
+

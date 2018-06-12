@@ -1,0 +1,921 @@
+From fb0ac8aaa2ad262d1afeac44781f9836af6b6f6d Mon Sep 17 00:00:00 2001
+From: Norbert Lange <norbert.lange@andritz.com>
+Date: Tue, 22 May 2018 14:52:15 +0200
+Subject: [PATCH 7/7] add support for installing CMake config files
+
+---
+ configure.ac                                  |   8 +
+ utils/Makefile.am                             |   2 +-
+ utils/cmake/Makefile.am                       |  14 ++
+ .../cobalt/xenomai-targets-noconfig.cmake.in  |  79 +++++++++
+ utils/cmake/cobalt/xenomai-targets.cmake.in   | 165 ++++++++++++++++++
+ utils/cmake/install_cmakeconfig.sh            | 128 ++++++++++++++
+ .../mercury/xenomai-targets-noconfig.cmake.in |  69 ++++++++
+ utils/cmake/mercury/xenomai-targets.cmake.in  | 157 +++++++++++++++++
+ utils/cmake/xenomai-config-version.cmake.in   |  31 ++++
+ utils/cmake/xenomai-config.cmake.in           |  45 +++++
+ utils/cmake/xenomai-macros.cmake.in           | 105 +++++++++++
+ 11 files changed, 802 insertions(+), 1 deletion(-)
+ create mode 100644 utils/cmake/Makefile.am
+ create mode 100644 utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in
+ create mode 100644 utils/cmake/cobalt/xenomai-targets.cmake.in
+ create mode 100755 utils/cmake/install_cmakeconfig.sh
+ create mode 100644 utils/cmake/mercury/xenomai-targets-noconfig.cmake.in
+ create mode 100644 utils/cmake/mercury/xenomai-targets.cmake.in
+ create mode 100644 utils/cmake/xenomai-config-version.cmake.in
+ create mode 100644 utils/cmake/xenomai-config.cmake.in
+ create mode 100644 utils/cmake/xenomai-macros.cmake.in
+
+diff --git a/configure.ac b/configure.ac
+index 7bb6e01ee..f67ac2161 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -501,6 +501,12 @@ fi
+ 
+ test x$CONFIG_XENO_VALGRIND_API = xy && AC_DEFINE(CONFIG_XENO_VALGRIND_API,1,[config])
+ 
++dnl Create a variable needed for later substition 
++AC_CHECK_SIZEOF([void *])
++AC_SUBST(CMAKE_SIZEOF_VOID_P, $ac_cv_sizeof_void_p)
++
++AC_SUBST(CMAKE_VERSION_CODE, $version_code)
++
+ dnl Check for obstack support in *libc
+ AC_CHECK_HEADERS(obstack.h,libc_has_obstack=y)
+ AM_CONDITIONAL(XENO_PRIVATE_OBSTACK,[test x$libc_has_obstack = x])
+@@ -872,6 +878,7 @@ AC_CONFIG_FILES([ \
+ 	scripts/xeno-config:scripts/xeno-config-$rtcore_type.in \
+ 	scripts/xeno \
+ 	scripts/hipase \
++	utils/cmake/xenomai-config-version.cmake \
+ 	lib/Makefile \
+ 	lib/boilerplate/Makefile \
+ 	lib/boilerplate/init/Makefile \
+@@ -943,6 +950,7 @@ AC_CONFIG_FILES([ \
+ 	utils/Makefile \
+ 	utils/hdb/Makefile \
+ 	utils/can/Makefile \
++	utils/cmake/Makefile \
+ 	utils/analogy/Makefile \
+ 	utils/ps/Makefile \
+ 	utils/slackspot/Makefile \
+diff --git a/utils/Makefile.am b/utils/Makefile.am
+index 81dbfda7c..56e18402d 100644
+--- a/utils/Makefile.am
++++ b/utils/Makefile.am
+@@ -1,4 +1,4 @@
+-SUBDIRS = hdb
++SUBDIRS = cmake hdb
+ if XENO_COBALT
+ SUBDIRS += analogy autotune can net ps slackspot corectl
+ endif
+diff --git a/utils/cmake/Makefile.am b/utils/cmake/Makefile.am
+new file mode 100644
+index 000000000..8c6b249f2
+--- /dev/null
++++ b/utils/cmake/Makefile.am
+@@ -0,0 +1,14 @@
++build-stamp:
++	sh $(srcdir)/install_cmakeconfig.sh --with-core=$(XENO_TARGET_CORE) --prefix="$(prefix)" \
++	  --exec-prefix="$(exec_prefix)" --libdir="$(libdir)" --includedir="$(includedir)" . && \
++	touch $@
++
++xenomai-config.cmake xenomai-macros.cmake \
++	xenomai-targets.cmake xenomai-targets-noconfig.cmake: build-stamp
++
++cmakeconfigdir = $(libdir)/cmake/$(PACKAGE)
++cmakeconfig_DATA = xenomai-config.cmake xenomai-macros.cmake xenomai-config-version.cmake \
++	xenomai-targets.cmake xenomai-targets-noconfig.cmake
++
++CLEANFILES = build-stamp xenomai-config.cmake xenomai-config-version.cmake xenomai-macros.cmake \
++	xenomai-targets.cmake xenomai-targets-noconfig.cmake
+diff --git a/utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in b/utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in
+new file mode 100644
+index 000000000..4e519f646
+--- /dev/null
++++ b/utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in
+@@ -0,0 +1,79 @@
++#----------------------------------------------------------------
++# Generated CMake target import file.
++#----------------------------------------------------------------
++
++# Commands may need to know the format version.
++set(CMAKE_IMPORT_FILE_VERSION 1)
++
++# Import target "Xenomai::cobalt" for configuration ""
++set_property(TARGET Xenomai::cobalt APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::cobalt PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcobalt.so"
++  IMPORTED_SONAME_NOCONFIG "libcobalt.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::cobalt )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::cobalt "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcobalt.so" )
++
++# Import target "Xenomai::modechk" for configuration ""
++set_property(TARGET Xenomai::modechk APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::modechk PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libmodechk.so"
++  IMPORTED_SONAME_NOCONFIG "libmodechk.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::modechk )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::modechk "${_IMPORT_PREFIX}/${_xenomai_libdir}/libmodechk.so" )
++
++# Import target "Xenomai::copperplate" for configuration ""
++set_property(TARGET Xenomai::copperplate APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::copperplate PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcopperplate.so"
++  IMPORTED_SONAME_NOCONFIG "libcopperplate.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::copperplate )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::copperplate "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcopperplate.so" )
++
++# Import target "Xenomai::vxworks" for configuration ""
++set_property(TARGET Xenomai::vxworks APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::vxworks PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libvxworks.so"
++  IMPORTED_SONAME_NOCONFIG "libvxworks.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::vxworks )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::vxworks "${_IMPORT_PREFIX}/${_xenomai_libdir}/libvxworks.so" )
++
++# Import target "Xenomai::psos" for configuration ""
++set_property(TARGET Xenomai::psos APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::psos PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libpsos.so"
++  IMPORTED_SONAME_NOCONFIG "libpsos.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::psos )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::psos "${_IMPORT_PREFIX}/${_xenomai_libdir}/libpsos.so" )
++
++# Import target "Xenomai::alchemy" for configuration ""
++set_property(TARGET Xenomai::alchemy APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::alchemy PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libalchemy.so"
++  IMPORTED_SONAME_NOCONFIG "libalchemy.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::alchemy )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::alchemy "${_IMPORT_PREFIX}/${_xenomai_libdir}/libalchemy.so" )
++
++# Import target "Xenomai::smokey" for configuration ""
++set_property(TARGET Xenomai::smokey APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::smokey PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libsmokey.so"
++  IMPORTED_SONAME_NOCONFIG "libsmokey.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::smokey )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::smokey "${_IMPORT_PREFIX}/${_xenomai_libdir}/libsmokey.so" )
++
++# Commands beyond this point should not need to know the version.
++set(CMAKE_IMPORT_FILE_VERSION)
+diff --git a/utils/cmake/cobalt/xenomai-targets.cmake.in b/utils/cmake/cobalt/xenomai-targets.cmake.in
+new file mode 100644
+index 000000000..1448c2799
+--- /dev/null
++++ b/utils/cmake/cobalt/xenomai-targets.cmake.in
+@@ -0,0 +1,165 @@
++# Generated by CMake
++
++if("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" LESS 2.5)
++   message(FATAL_ERROR "CMake >= 2.6.0 required")
++endif()
++cmake_policy(PUSH)
++cmake_policy(VERSION 2.6)
++#----------------------------------------------------------------
++# Generated CMake target import file.
++#----------------------------------------------------------------
++
++# Commands may need to know the format version.
++set(CMAKE_IMPORT_FILE_VERSION 1)
++
++# Protect against multiple inclusion, which would fail when already imported targets are added once more.
++set(_targetsDefined)
++set(_targetsNotDefined)
++set(_expectedTargets)
++foreach(_expectedTarget Xenomai::cobalt Xenomai::modechk Xenomai::legacy_bootstrap Xenomai::legacy_bootstrap_wrap Xenomai::posix Xenomai::copperplate Xenomai::vxworks Xenomai::psos Xenomai::alchemy Xenomai::smokey)
++  list(APPEND _expectedTargets ${_expectedTarget})
++  if(NOT TARGET ${_expectedTarget})
++    list(APPEND _targetsNotDefined ${_expectedTarget})
++  endif()
++  if(TARGET ${_expectedTarget})
++    list(APPEND _targetsDefined ${_expectedTarget})
++  endif()
++endforeach()
++if("${_targetsDefined}" STREQUAL "${_expectedTargets}")
++  unset(_targetsDefined)
++  unset(_targetsNotDefined)
++  unset(_expectedTargets)
++  set(CMAKE_IMPORT_FILE_VERSION)
++  cmake_policy(POP)
++  return()
++endif()
++if(NOT "${_targetsDefined}" STREQUAL "")
++  message(FATAL_ERROR "Some (but not all) targets in this export set were already defined.\nTargets Defined: ${_targetsDefined}\nTargets not yet defined: ${_targetsNotDefined}\n")
++endif()
++unset(_targetsDefined)
++unset(_targetsNotDefined)
++unset(_expectedTargets)
++
++
++# Compute the installation prefix relative to this file.
++get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../../@lib_to_prefix@" ABSOLUTE)
++if(_IMPORT_PREFIX STREQUAL "/")
++  set(_IMPORT_PREFIX "")
++endif()
++
++# Create imported target Xenomai::cobalt
++add_library(Xenomai::cobalt SHARED IMPORTED)
++
++set_target_properties(Xenomai::cobalt PROPERTIES
++  INTERFACE_COMPILE_DEFINITIONS "__COBALT__"
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/cobalt;${_IMPORT_PREFIX}/${_xenomai_includedir}"
++  INTERFACE_LINK_LIBRARIES "${_xenomai_threadlib};-lrt"
++)
++
++# Create imported target Xenomai::modechk
++add_library(Xenomai::modechk SHARED IMPORTED)
++
++set_target_properties(Xenomai::modechk PROPERTIES
++  INTERFACE_LINK_LIBRARIES "-Wl,@${_IMPORT_PREFIX}/${_xenomai_libdir}/modechk.wrappers;${_xenomai_threadlib};-lrt"
++)
++
++# Create imported target Xenomai::legacy_bootstrap
++add_library(Xenomai::legacy_bootstrap INTERFACE IMPORTED)
++
++set_target_properties(Xenomai::legacy_bootstrap PROPERTIES
++  INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_IMPORT_PREFIX}/${_xenomai_libdir}/xenomai/bootstrap-pic.o>;\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_IMPORT_PREFIX}/${_xenomai_libdir}/xenomai/bootstrap.o>"
++)
++
++# Create imported target Xenomai::legacy_bootstrap_wrap
++add_library(Xenomai::legacy_bootstrap_wrap INTERFACE IMPORTED)
++
++set_target_properties(Xenomai::legacy_bootstrap_wrap PROPERTIES
++  INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list=${_IMPORT_PREFIX}/${_xenomai_libdir}/dynlist.ld>"
++)
++
++# Create imported target Xenomai::posix
++add_library(Xenomai::posix INTERFACE IMPORTED)
++
++set_target_properties(Xenomai::posix PROPERTIES
++  INTERFACE_COMPILE_DEFINITIONS "__COBALT_WRAP__"
++  INTERFACE_LINK_LIBRARIES "-Wl,@${_IMPORT_PREFIX}/${_xenomai_libdir}/cobalt.wrappers;Xenomai::cobalt"
++)
++
++# Create imported target Xenomai::copperplate
++add_library(Xenomai::copperplate SHARED IMPORTED)
++
++set_target_properties(Xenomai::copperplate PROPERTIES
++  INTERFACE_LINK_LIBRARIES "Xenomai::cobalt"
++)
++
++# Create imported target Xenomai::vxworks
++add_library(Xenomai::vxworks SHARED IMPORTED)
++
++set_target_properties(Xenomai::vxworks PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/vxworks"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++# Create imported target Xenomai::psos
++add_library(Xenomai::psos SHARED IMPORTED)
++
++set_target_properties(Xenomai::psos PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/psos"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++# Create imported target Xenomai::alchemy
++add_library(Xenomai::alchemy SHARED IMPORTED)
++
++set_target_properties(Xenomai::alchemy PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/alchemy"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++# Create imported target Xenomai::smokey
++add_library(Xenomai::smokey SHARED IMPORTED)
++
++set_target_properties(Xenomai::smokey PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/smokey"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++if(CMAKE_VERSION VERSION_LESS 3.0.0)
++  message(FATAL_ERROR "This file relies on consumers using CMake 3.0.0 or greater.")
++endif()
++
++# Load information for each installed configuration.
++get_filename_component(_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
++file(GLOB CONFIG_FILES "${_DIR}/xenomai-targets-*.cmake")
++foreach(f ${CONFIG_FILES})
++  include(${f})
++endforeach()
++
++# Cleanup temporary variables.
++set(_IMPORT_PREFIX)
++
++# Loop over all imported files and verify that they actually exist
++foreach(target ${_IMPORT_CHECK_TARGETS} )
++  foreach(file ${_IMPORT_CHECK_FILES_FOR_${target}} )
++    if(NOT EXISTS "${file}" )
++      message(FATAL_ERROR "The imported target \"${target}\" references the file
++   \"${file}\"
++but this file does not exist.  Possible reasons include:
++* The file was deleted, renamed, or moved to another location.
++* An install or uninstall procedure did not complete successfully.
++* The installation package was faulty and contained
++   \"${CMAKE_CURRENT_LIST_FILE}\"
++but not all the files it references.
++")
++    endif()
++  endforeach()
++  unset(_IMPORT_CHECK_FILES_FOR_${target})
++endforeach()
++unset(_IMPORT_CHECK_TARGETS)
++
++# This file does not depend on other imported targets which have
++# been exported from the same project but in a separate export set.
++
++# Commands beyond this point should not need to know the version.
++set(CMAKE_IMPORT_FILE_VERSION)
++cmake_policy(POP)
+diff --git a/utils/cmake/install_cmakeconfig.sh b/utils/cmake/install_cmakeconfig.sh
+new file mode 100755
+index 000000000..473780634
+--- /dev/null
++++ b/utils/cmake/install_cmakeconfig.sh
+@@ -0,0 +1,128 @@
++#!/bin/sh
++SRCDIR=$(dirname "$(readlink -f "$0")")
++printusage() {
++cat << EOF
++Usage: "$(basename $0)" [OPTION]... [--] TARGETPATH
++
++Installs the CMake config files for Xenomai,
++TARGETPATH should be the installed '<libpath>/cmake/xenomai'
++of your installation.
++
++Options:
++  --with-core=<cobalt | mercury>
++                          build for dual kernel or single image
++
++  --prefix=PREFIX         install architecture-independent files in PREFIX
++                          [/usr/xenomai]
++  --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
++                          [PREFIX]
++
++  --libdir=DIR            object code libraries [EPREFIX/lib]
++  --includedir=DIR        C header files [PREFIX/include]
++
++  --version
++  --bitness
++EOF
++  if [ -n "$1" ]; then exit $1; fi
++}
++
++
++TMP="`getopt -s sh -o '' --long with-core:,prefix:,exec-prefix:,libdir:,includedir:,version:,bitness: -n "$(basename $0)" -- "$@"`"
++if [ $? != 0 ] ; then
++  printusage 1>&2 1
++fi
++
++eval set -- "$TMP"
++
++core=cobalt
++prefix=/usr/xenomai
++exec_prefix='${prefix}'
++libdir='${exec_prefix}'/lib
++includedir='${prefix}'/include
++version='@CMAKE_VERSION_CODE@'
++bitness='@CMAKE_SIZEOF_VOID_P@'
++do_version=
++
++while true ; do
++  case "$1" in
++    --with-core) core=$2; shift ;;
++    --prefix) prefix=$2; shift ;;
++    --exec-prefix) exec_prefix=$2; shift ;;
++    --libdir) libdir=$2; shift ;;
++    --includedir) includedir=$2; shift ;;
++    --version) version=$2; do_version=1; shift ;;
++    --bitness) bitness=$2; shift ;;
++
++    --help) printusage; exit 0 ;;
++    --) shift ; break ;;
++    *) echo "$(basename $0): Script Error" 1>&2 ; exit 1 ;;
++  esac
++  shift
++done
++
++targetpath=$1; shift
++# make simple absolute paths from the variables
++derefvar() {
++  local var last
++  var=$1
++  last="x$1"
++  while [ "$var" != "$last" ]; do
++    last=$var
++    var=$(eval "printf '%s' \"$var\"")
++  done
++  printf '%s' "$var"
++}
++
++# create relative path
++torelpath() {
++  local target common_part forward_part result
++  target=${2}
++
++  common_part=${1}
++  result=
++
++  test "x${common_part}" != "x" && test "x${target}" != "x" || return
++
++  while test "x${target#$common_part}" = "x${target}"; do
++      common_part=`dirname "$common_part"`
++      result="../${result}"
++  done
++
++  forward_part=${target#${common_part}}
++  forward_part=${forward_part#/}
++
++  result="${result}${forward_part}"
++  result=${result%/}
++
++  printf '%s' "${result}"
++}
++
++prefix=$(derefvar "$prefix")
++libdir=$(derefvar "$libdir")
++includedir=$(derefvar "$includedir")
++
++lib_to_prefix=$(torelpath "$libdir" "$prefix")
++libdir_rel=$(torelpath "$prefix" "$libdir")
++includedir_rel=$(torelpath "$prefix" "$includedir")
++
++core_upper=$(printf "%s" $core | tr '[a-z]' '[A-Z]')
++
++TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
++(
++  cd "$SRCDIR"
++for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-macros.cmake.in ${do_version:+xenomai-config-version.cmake.in}; do
++  tname=${template%.in}
++  tname=${tname##*/}
++  sed -e 's,@core@,'"$core"',g' \
++    -e 's,@core_upper@,'"$core_upper"',g' \
++    -e 's,@prefix@,'"$prefix"',g' \
++    -e 's,@libdir@,'"$libdir"',g' \
++    -e 's,@includedir@,'"$includedir"',g' \
++    -e 's,@lib_to_prefix@,'"$lib_to_prefix"',g' \
++    -e 's,@libdir_rel@,'"$libdir_rel"',g' \
++    -e 's,@includedir_rel@,'"$includedir_rel"',g' \
++    -e 's,@CMAKE_VERSION_CODE@,'"$version"',g' \
++    -e 's,@CMAKE_SIZEOF_VOID_P@,'"$bitness"',g'  >"${TEMPDIR}"/${tname} "${template}" || exit 20
++done
++)
++cp -r $TEMPDIR/. "${targetpath}"
+diff --git a/utils/cmake/mercury/xenomai-targets-noconfig.cmake.in b/utils/cmake/mercury/xenomai-targets-noconfig.cmake.in
+new file mode 100644
+index 000000000..e3669c940
+--- /dev/null
++++ b/utils/cmake/mercury/xenomai-targets-noconfig.cmake.in
+@@ -0,0 +1,69 @@
++#----------------------------------------------------------------
++# Generated CMake target import file.
++#----------------------------------------------------------------
++
++# Commands may need to know the format version.
++set(CMAKE_IMPORT_FILE_VERSION 1)
++
++# Import target "Xenomai::mercury" for configuration ""
++set_property(TARGET Xenomai::mercury APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::mercury PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libmercury.so"
++  IMPORTED_SONAME_NOCONFIG "libmercury.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::mercury )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::mercury "${_IMPORT_PREFIX}/${_xenomai_libdir}/libmercury.so" )
++
++# Import target "Xenomai::copperplate" for configuration ""
++set_property(TARGET Xenomai::copperplate APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::copperplate PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcopperplate.so"
++  IMPORTED_SONAME_NOCONFIG "libcopperplate.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::copperplate )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::copperplate "${_IMPORT_PREFIX}/${_xenomai_libdir}/libcopperplate.so" )
++
++# Import target "Xenomai::vxworks" for configuration ""
++set_property(TARGET Xenomai::vxworks APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::vxworks PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libvxworks.so"
++  IMPORTED_SONAME_NOCONFIG "libvxworks.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::vxworks )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::vxworks "${_IMPORT_PREFIX}/${_xenomai_libdir}/libvxworks.so" )
++
++# Import target "Xenomai::psos" for configuration ""
++set_property(TARGET Xenomai::psos APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::psos PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libpsos.so"
++  IMPORTED_SONAME_NOCONFIG "libpsos.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::psos )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::psos "${_IMPORT_PREFIX}/${_xenomai_libdir}/libpsos.so" )
++
++# Import target "Xenomai::alchemy" for configuration ""
++set_property(TARGET Xenomai::alchemy APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::alchemy PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libalchemy.so"
++  IMPORTED_SONAME_NOCONFIG "libalchemy.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::alchemy )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::alchemy "${_IMPORT_PREFIX}/${_xenomai_libdir}/libalchemy.so" )
++
++# Import target "Xenomai::smokey" for configuration ""
++set_property(TARGET Xenomai::smokey APPEND PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG)
++set_target_properties(Xenomai::smokey PROPERTIES
++  IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/${_xenomai_libdir}/libsmokey.so"
++  IMPORTED_SONAME_NOCONFIG "libsmokey.so"
++  )
++
++list(APPEND _IMPORT_CHECK_TARGETS Xenomai::smokey )
++list(APPEND _IMPORT_CHECK_FILES_FOR_Xenomai::smokey "${_IMPORT_PREFIX}/${_xenomai_libdir}/libsmokey.so" )
++
++# Commands beyond this point should not need to know the version.
++set(CMAKE_IMPORT_FILE_VERSION)
+diff --git a/utils/cmake/mercury/xenomai-targets.cmake.in b/utils/cmake/mercury/xenomai-targets.cmake.in
+new file mode 100644
+index 000000000..1edf7bef1
+--- /dev/null
++++ b/utils/cmake/mercury/xenomai-targets.cmake.in
+@@ -0,0 +1,157 @@
++# Generated by CMake
++
++if("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" LESS 2.5)
++   message(FATAL_ERROR "CMake >= 2.6.0 required")
++endif()
++cmake_policy(PUSH)
++cmake_policy(VERSION 2.6)
++#----------------------------------------------------------------
++# Generated CMake target import file.
++#----------------------------------------------------------------
++
++# Commands may need to know the format version.
++set(CMAKE_IMPORT_FILE_VERSION 1)
++
++# Protect against multiple inclusion, which would fail when already imported targets are added once more.
++set(_targetsDefined)
++set(_targetsNotDefined)
++set(_expectedTargets)
++foreach(_expectedTarget Xenomai::mercury Xenomai::legacy_bootstrap Xenomai::legacy_bootstrap_wrap Xenomai::posix Xenomai::copperplate Xenomai::vxworks Xenomai::psos Xenomai::alchemy Xenomai::smokey)
++  list(APPEND _expectedTargets ${_expectedTarget})
++  if(NOT TARGET ${_expectedTarget})
++    list(APPEND _targetsNotDefined ${_expectedTarget})
++  endif()
++  if(TARGET ${_expectedTarget})
++    list(APPEND _targetsDefined ${_expectedTarget})
++  endif()
++endforeach()
++if("${_targetsDefined}" STREQUAL "${_expectedTargets}")
++  unset(_targetsDefined)
++  unset(_targetsNotDefined)
++  unset(_expectedTargets)
++  set(CMAKE_IMPORT_FILE_VERSION)
++  cmake_policy(POP)
++  return()
++endif()
++if(NOT "${_targetsDefined}" STREQUAL "")
++  message(FATAL_ERROR "Some (but not all) targets in this export set were already defined.\nTargets Defined: ${_targetsDefined}\nTargets not yet defined: ${_targetsNotDefined}\n")
++endif()
++unset(_targetsDefined)
++unset(_targetsNotDefined)
++unset(_expectedTargets)
++
++
++# Compute the installation prefix relative to this file.
++get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../../@lib_to_prefix@" ABSOLUTE)
++if(_IMPORT_PREFIX STREQUAL "/")
++  set(_IMPORT_PREFIX "")
++endif()
++
++# Create imported target Xenomai::mercury
++add_library(Xenomai::mercury SHARED IMPORTED)
++
++set_target_properties(Xenomai::mercury PROPERTIES
++  INTERFACE_COMPILE_DEFINITIONS "__MERCURY__"
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/mercury;${_IMPORT_PREFIX}/${_xenomai_includedir}"
++  INTERFACE_LINK_LIBRARIES "${_xenomai_threadlib};-lrt"
++)
++
++# Create imported target Xenomai::legacy_bootstrap
++add_library(Xenomai::legacy_bootstrap INTERFACE IMPORTED)
++
++set_target_properties(Xenomai::legacy_bootstrap PROPERTIES
++  INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_IMPORT_PREFIX}/${_xenomai_libdir}/xenomai/bootstrap-pic.o>;\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_IMPORT_PREFIX}/${_xenomai_libdir}/xenomai/bootstrap.o>"
++)
++
++# Create imported target Xenomai::legacy_bootstrap_wrap
++add_library(Xenomai::legacy_bootstrap_wrap INTERFACE IMPORTED)
++
++set_target_properties(Xenomai::legacy_bootstrap_wrap PROPERTIES
++  INTERFACE_LINK_LIBRARIES "\$<\$<STREQUAL:\$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:-Wl,--wrap=main,--dynamic-list=${_IMPORT_PREFIX}/${_xenomai_libdir}/dynlist.ld>"
++)
++
++# Create imported target Xenomai::posix
++add_library(Xenomai::posix INTERFACE IMPORTED)
++
++set_target_properties(Xenomai::posix PROPERTIES
++  INTERFACE_LINK_LIBRARIES "Xenomai::mercury"
++)
++
++# Create imported target Xenomai::copperplate
++add_library(Xenomai::copperplate SHARED IMPORTED)
++
++set_target_properties(Xenomai::copperplate PROPERTIES
++  INTERFACE_LINK_LIBRARIES "Xenomai::mercury"
++)
++
++# Create imported target Xenomai::vxworks
++add_library(Xenomai::vxworks SHARED IMPORTED)
++
++set_target_properties(Xenomai::vxworks PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/vxworks"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++# Create imported target Xenomai::psos
++add_library(Xenomai::psos SHARED IMPORTED)
++
++set_target_properties(Xenomai::psos PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/psos"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++# Create imported target Xenomai::alchemy
++add_library(Xenomai::alchemy SHARED IMPORTED)
++
++set_target_properties(Xenomai::alchemy PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/alchemy"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++# Create imported target Xenomai::smokey
++add_library(Xenomai::smokey SHARED IMPORTED)
++
++set_target_properties(Xenomai::smokey PROPERTIES
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_xenomai_includedir}/smokey"
++  INTERFACE_LINK_LIBRARIES "Xenomai::copperplate"
++)
++
++if(CMAKE_VERSION VERSION_LESS 3.0.0)
++  message(FATAL_ERROR "This file relies on consumers using CMake 3.0.0 or greater.")
++endif()
++
++# Load information for each installed configuration.
++get_filename_component(_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
++file(GLOB CONFIG_FILES "${_DIR}/xenomai-targets-*.cmake")
++foreach(f ${CONFIG_FILES})
++  include(${f})
++endforeach()
++
++# Cleanup temporary variables.
++set(_IMPORT_PREFIX)
++
++# Loop over all imported files and verify that they actually exist
++foreach(target ${_IMPORT_CHECK_TARGETS} )
++  foreach(file ${_IMPORT_CHECK_FILES_FOR_${target}} )
++    if(NOT EXISTS "${file}" )
++      message(FATAL_ERROR "The imported target \"${target}\" references the file
++   \"${file}\"
++but this file does not exist.  Possible reasons include:
++* The file was deleted, renamed, or moved to another location.
++* An install or uninstall procedure did not complete successfully.
++* The installation package was faulty and contained
++   \"${CMAKE_CURRENT_LIST_FILE}\"
++but not all the files it references.
++")
++    endif()
++  endforeach()
++  unset(_IMPORT_CHECK_FILES_FOR_${target})
++endforeach()
++unset(_IMPORT_CHECK_TARGETS)
++
++# This file does not depend on other imported targets which have
++# been exported from the same project but in a separate export set.
++
++# Commands beyond this point should not need to know the version.
++set(CMAKE_IMPORT_FILE_VERSION)
++cmake_policy(POP)
+diff --git a/utils/cmake/xenomai-config-version.cmake.in b/utils/cmake/xenomai-config-version.cmake.in
+new file mode 100644
+index 000000000..df856acd0
+--- /dev/null
++++ b/utils/cmake/xenomai-config-version.cmake.in
+@@ -0,0 +1,31 @@
++# This is a basic version file for the Config-mode of find_package().
++# It is used by write_basic_package_version_file() as input file for configure_file()
++# to create a version-file which can be installed along a config.cmake file.
++#
++# The created file sets PACKAGE_VERSION_EXACT if the current version string and
++# the requested version string are exactly the same and it sets
++# PACKAGE_VERSION_COMPATIBLE if the current version is >= requested version.
++# The variable CVF_VERSION must be set before calling configure_file().
++
++set(PACKAGE_VERSION "@CMAKE_VERSION_CODE@")
++
++if(PACKAGE_VERSION VERSION_LESS PACKAGE_FIND_VERSION)
++  set(PACKAGE_VERSION_COMPATIBLE FALSE)
++else()
++  set(PACKAGE_VERSION_COMPATIBLE TRUE)
++  if(PACKAGE_FIND_VERSION STREQUAL PACKAGE_VERSION)
++    set(PACKAGE_VERSION_EXACT TRUE)
++  endif()
++endif()
++
++# if the installed or the using project don't have CMAKE_SIZEOF_VOID_P set, ignore it:
++if("${CMAKE_SIZEOF_VOID_P}" STREQUAL "" OR "@CMAKE_SIZEOF_VOID_P@" STREQUAL "")
++   return()
++endif()
++
++# check that the installed version has the same 32/64bit-ness as the one which is currently searching:
++if(NOT CMAKE_SIZEOF_VOID_P STREQUAL "@CMAKE_SIZEOF_VOID_P@")
++   math(EXPR installedBits "@CMAKE_SIZEOF_VOID_P@ * 8")
++   set(PACKAGE_VERSION "${PACKAGE_VERSION} (${installedBits}bit)")
++   set(PACKAGE_VERSION_UNSUITABLE TRUE)
++endif()
+diff --git a/utils/cmake/xenomai-config.cmake.in b/utils/cmake/xenomai-config.cmake.in
+new file mode 100644
+index 000000000..792a3ae90
+--- /dev/null
++++ b/utils/cmake/xenomai-config.cmake.in
+@@ -0,0 +1,45 @@
++
++####### Expanded from @PACKAGE_INIT@ by configure_package_config_file() #######
++####### Any changes to this file will be overwritten by the next CMake run ####
++####### The input file was xenomai-config.cmake.in                            ########
++
++get_filename_component(PACKAGE_PREFIX_DIR "${CMAKE_CURRENT_LIST_DIR}/../../@lib_to_prefix@" ABSOLUTE)
++
++macro(set_and_check _var _file)
++  set(${_var} "${_file}")
++  if(NOT EXISTS "${_file}")
++    message(FATAL_ERROR "File or directory ${_file} referenced by variable ${_var} does not exist !")
++  endif()
++endmacro()
++
++macro(check_required_components _NAME)
++  foreach(comp ${${_NAME}_FIND_COMPONENTS})
++    if(NOT ${_NAME}_${comp}_FOUND)
++      if(${_NAME}_FIND_REQUIRED_${comp})
++        set(${_NAME}_FOUND FALSE)
++      endif()
++    endif()
++  endforeach()
++endmacro()
++
++####################################################################################
++
++include(CMakeFindDependencyMacro)
++find_dependency(Threads)
++
++set(_xenomai_threadlib "Threads::Threads")
++if(CMAKE_VERSION VERSION_LESS 3.1)
++	set(_xenomai_threadlib "${CMAKE_THREAD_LIBS_INIT}")
++endif()
++
++set(_xenomai_includedir "@includedir_rel@")
++set(_xenomai_libdir "@libdir_rel@")
++
++include(${CMAKE_CURRENT_LIST_DIR}/xenomai-targets.cmake)
++check_required_components(xenomai)
++
++include(${CMAKE_CURRENT_LIST_DIR}/xenomai-macros.cmake)
++
++unset(_xenomai_threadlib)
++unset(_xenomai_libdir)
++unset(_xenomai_includedir)
+diff --git a/utils/cmake/xenomai-macros.cmake.in b/utils/cmake/xenomai-macros.cmake.in
+new file mode 100644
+index 000000000..83440bf71
+--- /dev/null
++++ b/utils/cmake/xenomai-macros.cmake.in
+@@ -0,0 +1,105 @@
++
++if(CMAKE_VERSION VERSION_LESS 3.5)
++include(CMakeParseArguments)
++endif()
++
++# define _XENOMAI_BOOTSTRAP_MODNAME "target"
++
++# X - add sources to target (CMake 3.0 / 3.1 needed), fallback Y if no header
++# Y - link precompiled object to target (test)
++# Z - wrap main via macro
++# L - wrap main via linker
++# target sources and source generator expressions only available with CMake 3.1
++#
++# Generator expressions are always preferred,
++# if
++# source
++# wrapmain MACRO
++# wrapmain 
++function(xenomai_target_bootstrap target)
++
++	set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
++	# __real_main?
++	file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
++	file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
++	file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
++
++	get_target_property(ttype ${target} TYPE)
++
++	cmake_parse_arguments(XBS "NO_FALLBACK" "MAIN;MAIN_WRAP" "SKINS" ${ARGN})
++	set(_errors)
++
++	if(XBS_MAIN AND NOT XBS_MAIN STREQUAL "NONE" AND NOT XBS_MAIN STREQUAL "SOURCE" AND NOT XBS_MAIN STREQUAL "PRECOMPILED")
++		set(_errors ${_errors} "MAIN only support the values NONE, SOURCE and PRECOMPILED")
++	endif()
++	if(XBS_MAIN_WRAP AND NOT XBS_MAIN_WRAP STREQUAL "NONE" AND NOT XBS_MAIN_WRAP STREQUAL "MACRO" AND NOT XBS_MAIN_WRAP STREQUAL "LINKER")
++		set(_errors ${_errors} "XBS_MAIN_WRAP only support the values NONE, MACRO and LINKER")
++	endif()
++
++	# the default is not working on CMake 3.0, so fallback to
++	# the precompiled objects unless this was disabled
++	if(CMAKE_VERSION VERSION_LESS 3.1)
++		if(NOT XBS_MAIN OR XBS_MAIN STREQUAL "NONE" OR XBS_MAIN STREQUAL "SOURCE")
++			if(XBS_NO_FALLBACK)
++				set(_errors ${_errors} "MAIN NONE and MAIN SOURCE need atleast CMake 3.1")
++			else()
++				if(ttype STREQUAL EXECUTABLE)
++					message(WARNING "xenomai_target_bootstrap: setting MAIN PRECOMPILED for ${target} (CMake Version less than 3.1)")
++				endif()
++				set(XBS_MAIN "PRECOMPILED")
++			    if(NOT XBS_MAIN_WRAP OR XBS_MAIN_WRAP STREQUAL "NONE" OR XBS_MAIN_WRAP STREQUAL "MACRO")
++			    	set(XBS_MAIN_WRAP "LINKER")
++			    	if(ttype STREQUAL EXECUTABLE)
++						message(WARNING "xenomai_target_bootstrap: setting XBS_MAIN_WRAP LINKER for ${target} (CMake Version less than 3.1)")
++					endif()
++			    endif()
++			endif()
++		endif()
++	endif()
++
++	if(_errors)
++		message(SEND_ERROR "xenomai_target_bootstrap: ${_errors}")
++		return()
++	endif()
++
++	if(XBS_MAIN STREQUAL "SOURCE")
++		target_sources(${target} PRIVATE
++			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
++			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>"
++		)
++
++	elseif(XBS_MAIN STREQUAL "PRECOMPILED")
++		target_link_libraries(${target} PRIVATE
++			Xenomai::legacy_bootstrap
++		)
++
++	else()
++		target_sources(${target} PRIVATE
++		    "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
++			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>"
++		)
++
++	endif()
++
++	if(XBS_MAIN_WRAP STREQUAL "MACRO")
++		target_compile_definitions(${target} PRIVATE
++		    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>
++		)
++
++	elseif(XBS_MAIN_WRAP STREQUAL "LINKER")
++		target_link_libraries(${target} PRIVATE
++			Xenomai::legacy_bootstrap_wrap
++		)
++	endif()
++
++	set(_skins)
++	foreach(skin ${XBS_SKINS})
++		set(_skins ${_skins} "xenomai::${skin}")
++	endforeach()
++
++	if(_skins)
++		target_link_libraries(${target} PRIVATE
++			${_skins}
++		)
++	endif()
++endfunction()
+-- 
+2.17.1
+

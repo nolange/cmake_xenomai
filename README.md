@@ -25,6 +25,12 @@ but full functionality required version 3.1.
 
 # Installation
 
+## Patching Xenomai
+
+the patchset folder contains the patches needed to add the bootstrap header and
+install the cmake config files to Xenomai.
+Easiest solution if you don't mind re-compiling/installing
+
 ## Config-files
 
 Those come with placeholders, which get replaced through the included script.

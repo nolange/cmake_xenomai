@@ -1,0 +1,28 @@
+From ab7e06cfde5e4f8835015bf28decb964f42ccde5 Mon Sep 17 00:00:00 2001
+From: Norbert Lange <norbert.lange@andritz.com>
+Date: Wed, 2 May 2018 14:06:00 +0200
+Subject: [PATCH 6/7] fix add modname
+
+---
+ lib/boilerplate/setup.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/boilerplate/setup.c b/lib/boilerplate/setup.c
+index a9c6c8df7..c2427e4c0 100644
+--- a/lib/boilerplate/setup.c
++++ b/lib/boilerplate/setup.c
+@@ -665,9 +665,9 @@ static void _xenomai_init_ext(int *argcp, char *const **argvp, int isDso, const
+ 	trace_me("%s bootstrap done", me);
+ }
+ 
+-void xenomai_init_ext(int *argcp, char *const **argvp, int isDso, unsigned long flags)
++void xenomai_init_ext(int *argcp, char *const **argvp, int isDso, const char *modname, unsigned long flags)
+ {
+-	_xenomai_init_ext(argcp, argvp, isDso, NULL, flags);
++	_xenomai_init_ext(argcp, argvp, isDso, modname, flags);
+ }
+ 
+ void xenomai_init(int *argcp, char *const **argvp)
+-- 
+2.17.1
+
