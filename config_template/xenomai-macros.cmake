@@ -15,7 +15,7 @@ endif()
 # if
 # source
 # wrapmain MACRO
-# wrapmain 
+# wrapmain
 function(xenomai_target_bootstrap target)
 
 	set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
@@ -94,7 +94,7 @@ function(xenomai_target_bootstrap target)
 
 	set(_skins)
 	foreach(skin ${XBS_SKINS})
-		set(_skins ${_skins} "xenomai::${skin}")
+		set(_skins ${_skins} "Xenomai::${skin}")
 	endforeach()
 
 	if(_skins)
