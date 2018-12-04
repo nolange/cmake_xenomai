@@ -31,9 +31,9 @@ index 4f9b1f928..1dc3c6aca 100644
 --- a/configure.ac
 +++ b/configure.ac
 @@ -478,6 +478,12 @@ fi
- 
+
  test x$CONFIG_XENO_VALGRIND_API = xy && AC_DEFINE(CONFIG_XENO_VALGRIND_API,1,[config])
- 
+
 +dnl Create a variable needed for later substition
 +AC_CHECK_SIZEOF([void *])
 +AC_SUBST(CMAKE_SIZEOF_VOID_P, $ac_cv_sizeof_void_p)
@@ -847,12 +847,12 @@ index 000000000..11bde675f
 +					message(WARNING "xenomai_target_bootstrap: setting MAIN PRECOMPILED for ${target} (CMake Version less than 3.1)")
 +				endif()
 +				set(XBS_MAIN "PRECOMPILED")
-+			    if(NOT XBS_MAIN_WRAP OR XBS_MAIN_WRAP STREQUAL "NONE" OR XBS_MAIN_WRAP STREQUAL "MACRO")
-+			    	set(XBS_MAIN_WRAP "LINKER")
-+			    	if(ttype STREQUAL EXECUTABLE)
++				if(NOT XBS_MAIN_WRAP OR XBS_MAIN_WRAP STREQUAL "NONE" OR XBS_MAIN_WRAP STREQUAL "MACRO")
++					set(XBS_MAIN_WRAP "LINKER")
++					if(ttype STREQUAL EXECUTABLE)
 +						message(WARNING "xenomai_target_bootstrap: setting XBS_MAIN_WRAP LINKER for ${target} (CMake Version less than 3.1)")
 +					endif()
-+			    endif()
++				endif()
 +			endif()
 +		endif()
 +	endif()
@@ -875,7 +875,7 @@ index 000000000..11bde675f
 +
 +	else()
 +		target_sources(${target} PRIVATE
-+		    "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
++			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
 +			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>"
 +		)
 +
@@ -883,7 +883,7 @@ index 000000000..11bde675f
 +
 +	if(XBS_MAIN_WRAP STREQUAL "MACRO")
 +		target_compile_definitions(${target} PRIVATE
-+		    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>
++			$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>
 +		)
 +
 +	elseif(XBS_MAIN_WRAP STREQUAL "LINKER")
@@ -903,6 +903,6 @@ index 000000000..11bde675f
 +		)
 +	endif()
 +endfunction()
--- 
+--
 2.19.2
 

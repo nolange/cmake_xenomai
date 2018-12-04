@@ -45,12 +45,12 @@ function(xenomai_target_bootstrap target)
 					message(WARNING "xenomai_target_bootstrap: setting MAIN PRECOMPILED for ${target} (CMake Version less than 3.1)")
 				endif()
 				set(XBS_MAIN "PRECOMPILED")
-			    if(NOT XBS_MAIN_WRAP OR XBS_MAIN_WRAP STREQUAL "NONE" OR XBS_MAIN_WRAP STREQUAL "MACRO")
-			    	set(XBS_MAIN_WRAP "LINKER")
-			    	if(ttype STREQUAL EXECUTABLE)
-						message(WARNING "xenomai_target_bootstrap: setting XBS_MAIN_WRAP LINKER for ${target} (CMake Version less than 3.1)")
+					if(NOT XBS_MAIN_WRAP OR XBS_MAIN_WRAP STREQUAL "NONE" OR XBS_MAIN_WRAP STREQUAL "MACRO")
+						set(XBS_MAIN_WRAP "LINKER")
+						if(ttype STREQUAL EXECUTABLE)
+							message(WARNING "xenomai_target_bootstrap: setting XBS_MAIN_WRAP LINKER for ${target} (CMake Version less than 3.1)")
+						endif()
 					endif()
-			    endif()
 			endif()
 		endif()
 	endif()
@@ -73,7 +73,7 @@ function(xenomai_target_bootstrap target)
 
 	else()
 		target_sources(${target} PRIVATE
-		    "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
+			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
 			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>"
 		)
 
@@ -81,7 +81,7 @@ function(xenomai_target_bootstrap target)
 
 	if(XBS_MAIN_WRAP STREQUAL "MACRO")
 		target_compile_definitions(${target} PRIVATE
-		    $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>
+			$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>
 		)
 
 	elseif(XBS_MAIN_WRAP STREQUAL "LINKER")
