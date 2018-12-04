@@ -1,28 +1,26 @@
+# Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
+# file Copyright.txt or https://cmake.org/licensing for details.
+
+#.rst:
+# Xenomai Macros
+# ---------
+#
+
+#
+# Minimal required CMake Version is 3.0,
+# several features are only fully usable with 3.1
 
 if(CMAKE_VERSION VERSION_LESS 3.5)
 include(CMakeParseArguments)
 endif()
 
-# define _XENOMAI_BOOTSTRAP_MODNAME "target"
-
-# X - add sources to target (CMake 3.0 / 3.1 needed), fallback Y if no header
-# Y - link precompiled object to target (test)
-# Z - wrap main via macro
-# L - wrap main via linker
-# target sources and source generator expressions only available with CMake 3.1
-#
-# Generator expressions are always preferred,
-# if
-# source
-# wrapmain MACRO
-# wrapmain
 function(xenomai_target_bootstrap target)
 
 	set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
-	# __real_main?
-	file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
-	file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
-	file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
+
+	file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
+	file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
+	file(WRITE "${_fileprefix}.c" "#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#include <xenomai/bootstrap-template.h>")
 
 	get_target_property(ttype ${target} TYPE)
 
@@ -94,7 +92,8 @@ function(xenomai_target_bootstrap target)
 
 	set(_skins)
 	foreach(skin ${XBS_SKINS})
-		set(_skins ${_skins} "Xenomai::${skin}")
+		string(TOLOWER ${_skin} _lbname)
+		set(_skins ${_skins} "Xenomai::${_lbname}")
 	endforeach()
 
 	if(_skins)

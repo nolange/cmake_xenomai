@@ -1,0 +1,29 @@
+From ec55f7f2df70ca152e7ae3fcae28d14ed23118a0 Mon Sep 17 00:00:00 2001
+From: Norbert Lange <norbert.lange@andritz.com>
+Date: Tue, 23 Oct 2018 17:22:56 +0200
+Subject: [PATCH 5/5] use glibc constructors
+
+---
+ utils/cmake/xenomai-macros.cmake.in | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/utils/cmake/xenomai-macros.cmake.in b/utils/cmake/xenomai-macros.cmake.in
+index 11bde675f..d4d18a689 100644
+--- a/utils/cmake/xenomai-macros.cmake.in
++++ b/utils/cmake/xenomai-macros.cmake.in
+@@ -7,9 +7,9 @@ function(xenomai_target_bootstrap target)
+ 
+ 	set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
+ 
+-	file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
+-	file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
+-	file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
++	file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
++	file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
++	file(WRITE "${_fileprefix}.c" "#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#include <xenomai/bootstrap-template.h>")
+ 
+ 	get_target_property(ttype ${target} TYPE)
+ 
+-- 
+2.19.2
+

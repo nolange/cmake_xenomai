@@ -1,7 +1,7 @@
-From fb0ac8aaa2ad262d1afeac44781f9836af6b6f6d Mon Sep 17 00:00:00 2001
+From c88fd452b2086819e9189bc604518ed21dfa815a Mon Sep 17 00:00:00 2001
 From: Norbert Lange <norbert.lange@andritz.com>
 Date: Tue, 22 May 2018 14:52:15 +0200
-Subject: [PATCH 7/7] add support for installing CMake config files
+Subject: [PATCH 4/5] add support for installing CMake config files
 
 ---
  configure.ac                                  |   8 +
@@ -14,8 +14,8 @@ Subject: [PATCH 7/7] add support for installing CMake config files
  utils/cmake/mercury/xenomai-targets.cmake.in  | 157 +++++++++++++++++
  utils/cmake/xenomai-config-version.cmake.in   |  31 ++++
  utils/cmake/xenomai-config.cmake.in           |  45 +++++
- utils/cmake/xenomai-macros.cmake.in           | 105 +++++++++++
- 11 files changed, 802 insertions(+), 1 deletion(-)
+ utils/cmake/xenomai-macros.cmake.in           |  92 ++++++++++
+ 11 files changed, 789 insertions(+), 1 deletion(-)
  create mode 100644 utils/cmake/Makefile.am
  create mode 100644 utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in
  create mode 100644 utils/cmake/cobalt/xenomai-targets.cmake.in
@@ -27,14 +27,14 @@ Subject: [PATCH 7/7] add support for installing CMake config files
  create mode 100644 utils/cmake/xenomai-macros.cmake.in
 
 diff --git a/configure.ac b/configure.ac
-index 7bb6e01ee..f67ac2161 100644
+index 4f9b1f928..1dc3c6aca 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -501,6 +501,12 @@ fi
+@@ -478,6 +478,12 @@ fi
  
  test x$CONFIG_XENO_VALGRIND_API = xy && AC_DEFINE(CONFIG_XENO_VALGRIND_API,1,[config])
  
-+dnl Create a variable needed for later substition 
++dnl Create a variable needed for later substition
 +AC_CHECK_SIZEOF([void *])
 +AC_SUBST(CMAKE_SIZEOF_VOID_P, $ac_cv_sizeof_void_p)
 +
@@ -43,15 +43,15 @@ index 7bb6e01ee..f67ac2161 100644
  dnl Check for obstack support in *libc
  AC_CHECK_HEADERS(obstack.h,libc_has_obstack=y)
  AM_CONDITIONAL(XENO_PRIVATE_OBSTACK,[test x$libc_has_obstack = x])
-@@ -872,6 +878,7 @@ AC_CONFIG_FILES([ \
+@@ -844,6 +850,7 @@ AC_CONFIG_FILES([ \
+ 	scripts/Makefile \
  	scripts/xeno-config:scripts/xeno-config-$rtcore_type.in \
  	scripts/xeno \
- 	scripts/hipase \
 +	utils/cmake/xenomai-config-version.cmake \
  	lib/Makefile \
  	lib/boilerplate/Makefile \
  	lib/boilerplate/init/Makefile \
-@@ -943,6 +950,7 @@ AC_CONFIG_FILES([ \
+@@ -909,6 +916,7 @@ AC_CONFIG_FILES([ \
  	utils/Makefile \
  	utils/hdb/Makefile \
  	utils/can/Makefile \
@@ -756,7 +756,7 @@ index 000000000..df856acd0
 +endif()
 diff --git a/utils/cmake/xenomai-config.cmake.in b/utils/cmake/xenomai-config.cmake.in
 new file mode 100644
-index 000000000..792a3ae90
+index 000000000..530a2952a
 --- /dev/null
 +++ b/utils/cmake/xenomai-config.cmake.in
 @@ -0,0 +1,45 @@
@@ -798,7 +798,7 @@ index 000000000..792a3ae90
 +set(_xenomai_libdir "@libdir_rel@")
 +
 +include(${CMAKE_CURRENT_LIST_DIR}/xenomai-targets.cmake)
-+check_required_components(xenomai)
++check_required_components(Xenomai)
 +
 +include(${CMAKE_CURRENT_LIST_DIR}/xenomai-macros.cmake)
 +
@@ -807,32 +807,19 @@ index 000000000..792a3ae90
 +unset(_xenomai_includedir)
 diff --git a/utils/cmake/xenomai-macros.cmake.in b/utils/cmake/xenomai-macros.cmake.in
 new file mode 100644
-index 000000000..83440bf71
+index 000000000..11bde675f
 --- /dev/null
 +++ b/utils/cmake/xenomai-macros.cmake.in
-@@ -0,0 +1,105 @@
+@@ -0,0 +1,92 @@
 +
 +if(CMAKE_VERSION VERSION_LESS 3.5)
 +include(CMakeParseArguments)
 +endif()
 +
-+# define _XENOMAI_BOOTSTRAP_MODNAME "target"
-+
-+# X - add sources to target (CMake 3.0 / 3.1 needed), fallback Y if no header
-+# Y - link precompiled object to target (test)
-+# Z - wrap main via macro
-+# L - wrap main via linker
-+# target sources and source generator expressions only available with CMake 3.1
-+#
-+# Generator expressions are always preferred,
-+# if
-+# source
-+# wrapmain MACRO
-+# wrapmain 
 +function(xenomai_target_bootstrap target)
 +
 +	set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
-+	# __real_main?
++
 +	file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
 +	file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
 +	file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
@@ -907,7 +894,7 @@ index 000000000..83440bf71
 +
 +	set(_skins)
 +	foreach(skin ${XBS_SKINS})
-+		set(_skins ${_skins} "xenomai::${skin}")
++		set(_skins ${_skins} "Xenomai::${skin}")
 +	endforeach()
 +
 +	if(_skins)
@@ -917,5 +904,5 @@ index 000000000..83440bf71
 +	endif()
 +endfunction()
 -- 
-2.17.1
+2.19.2
 
