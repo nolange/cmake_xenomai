@@ -5,7 +5,7 @@ find_dependency(Threads)
 
 set(_xenomai_threadlib "Threads::Threads")
 if(CMAKE_VERSION VERSION_LESS 3.1)
-	set(_xenomai_threadlib "${CMAKE_THREAD_LIBS_INIT}")
+  set(_xenomai_threadlib "${CMAKE_THREAD_LIBS_INIT}")
 endif()
 
 set(_xenomai_includedir "~#includedir_rel#~")
