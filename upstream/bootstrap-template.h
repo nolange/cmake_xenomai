@@ -17,7 +17,7 @@
  *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- *  
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -44,8 +44,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  */
-
-#include <xenomai/init.h>
 
 /* @file bootstrap-template.h
  * @brief Template header for bootstrap code
@@ -81,221 +79,167 @@
  *                  Set a weak reference to the defined main function
  * _XENOMAI_BOOTSTRAP_DSO
  *                  Should be defined when building shared libraries
- * _XENOMAI_BOOTSTRAP_MODNAME
- *                  Name of the executable/shared library for tracing
- * _XENOMAI_BOOTSTRAP_INITFLAGS
- *                  Flags passed to the xenomai_init_ext function
  */
 
-#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS
+#include <xenomai/init.h>
 
 /* if requested by _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS,
  * test if macros for glibc are defined and
  * define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL accordingly */
-#if !defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) \
-	&& defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS)
+#if !defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) &&                    \
+        defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS)
 #if defined(__GLIBC__) && !defined(__UCLIBC__)
 #define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL 1
 #endif
 #endif
 
-#if !defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) \
-	|| _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL != 1
+#if !defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) ||                    \
+        _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL != 1
 #define _XENOMAI_BOOTSTRAP_DEFINE_GETARGV
 #endif
 
+/* if needed and not in the DSO, then
+ * define a function for fetching the commandline arguments
+ */
+#if !defined(_XENOMAI_INIT_HASFETCHARGV) &&                                    \
+        (!defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) ||               \
+         _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL != 1)
+#define _XENOMAI_BOOTSTRAP_STATIC_FETCHARGV 1
+#endif
+
+/* declare C Functions as such */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef __setup_section
-#define __setup_section __attribute__ ((section(".text.startup.xenomai")))
+int xenomai_bootstrap_getargv(int *argc, char *const **argv);
+
+#ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER
+int _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(int argc, char *const argv[]);
+#endif
+int xenomai_main(int argc, char *const argv[]);
+
+#ifdef _XENOMAI_BOOTSTRAP_STATIC_FETCHARGV
+static __inline__ int _xenomai_init_fetchargv(int *argcp, char *const **argvp);
 #endif
 
-static int early_argc;
-static char *const *early_argv;
+static struct xbootstrap_state {
+	int argc;
+	char *const *argv;
+} early_args;
+
+#ifdef __cplusplus
+}
+#endif
 
 /* @brief get the potentially argv vector
  *
  * The xenomai init code modifies the argv vector,
  * this function allows to retrive this vector later.
  */
-__setup_section int xenomai_bootstrap_getargv(int *argc, char *const** argv)
+int xenomai_bootstrap_getargv(int *argc, char *const **argv)
 {
-	if (early_argc)
-	{
-		*argc = early_argc;
-		*argv = early_argv;
+	if (early_args.argc) {
+		*argc = early_args.argc;
+		*argv = early_args.argv;
 		return 1;
 	}
 	return 0;
 }
 
-#ifdef __cplusplus
-}
-#endif
-
-/* if needed, then
- * define a function for fetching the commandline arguments
- */
-#if !defined(_XENOMAI_INIT_HASFETCHARGV) && \
-	( !defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) \
-	  || _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL != 1 )
-#include <sys/types.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
-
-__setup_section static int xenomai_init_fetchargv(int *argcp, char *const **argvp)
+static __inline__ void _xenomai_bootstrap_setargv(int argc, char *const *argv)
 {
-	char *arglist, *argend, *p, **v;
-	ssize_t len, ret;
-	int fd, n;
-
-	len = 1024;
-
-	for (;;) {
-		fd = __STD(open("/proc/self/cmdline", O_RDONLY));
-		if (fd < 0)
-			return -1;
-
-		arglist = __STD(malloc(len));
-		if (arglist == NULL) {
-			__STD(close(fd));
-			return -1;
-		}
-
-		ret = __STD(read(fd, arglist, len));
-		__STD(close(fd));
-
-		if (ret < 0) {
-			__STD(free(arglist));
-			return -1;
-		}
-
-		if (ret < len)
-			break;
-
-		__STD(free(arglist));
-		len <<= 1;
-	}
-
-	argend = arglist + ret;
-	p = arglist;
-	n = 0;
-	while (p < argend) {
-		n++;
-		p += strlen(p) + 1;
-	}
-
-	v = __STD(malloc((n + 1) * sizeof(char *)));
-	if (v == NULL) {
-		__STD(free(arglist));
-		return -1;
-	}
-
-	p = arglist;
-	n = 0;
-	while (p < argend) {
-		v[n++] = p;
-		p += strlen(p) + 1;
-	}
-
-	v[n] = NULL;
-	*argcp = n;
-	*argvp = v;
-	return 0;
+	early_args.argc = argc;
+	early_args.argv = argv;
 }
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER
+static __inline__ void call_xenomai_init(int *argcp, char *const **argvp)
+{
+#if !defined(_XENOMAI_BOOTSTRAP_INITFLAGS) &&                                  \
+        !defined(_XENOMAI_BOOTSTRAP_MODNAME)
+	/* prefer previously existing functions for better backwards capability */
 #ifdef _XENOMAI_BOOTSTRAP_DSO
-#error "Main wrapper is not allowed for shared libraries"
+	xenomai_init_dso(argcp, argvp);
+#else
+	xenomai_init(argcp, argvp);
 #endif
 
-#ifdef _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER
-int _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER(int argc, char *const argv[])
-__attribute__((alias("xenomai_main"), weak));
+#else
+	int isDso = 0;
+	unsigned long long bflags = 0;
+	const char *modname = NULL;
+#ifdef _XENOMAI_BOOTSTRAP_DSO
+	isDso = 1;
+#endif
+#ifdef _XENOMAI_BOOTSTRAP_INITFLAGS
+	bflags = _XENOMAI_BOOTSTRAP_INITFLAGS;
+#endif
+#ifdef _XENOMAI_BOOTSTRAP_MODNAME
+	modname = _XENOMAI_BOOTSTRAP_MODNAME;
+#endif
+	xenomai_init_ext(argcp, argvp, isDso, modname, bflags);
 #endif
 
-int _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(int argc, char *const argv[]);
-
-__setup_section int xenomai_main(int argc, char *const argv[])
-{
-#ifdef trace_me
-    trace_me("xenomai_main entered");
-#endif
-	if (!early_argc)
-	{
-		xenomai_init(&argc, &argv);
-		/* State should be identical to using the constructor function */
-		early_argc = argc;
-		early_argv = argv;
-	}
-
-#if defined(trace_me) && defined(__stringify)
-	trace_me("xenomai_main call %s", __stringify(_XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER));
-#endif
-	return _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(early_argc, early_argv);
+	_xenomai_bootstrap_setargv(*argcp, *argvp);
 }
-#endif /* ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER */
 
-/**
+/** Bootstrap: handle commandline args and call xenomai's init
+ *
  * glibc calls constructors/destructors with the argv vector,
  * which is nice as this avoids some code.
  * Other C-libraries don't, and worse: define __GLIBC__
  * This probably should be an explicit opt-in
  */
 #if _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL == 1
-__bootstrap_ctor static void xenomai_bootstrap(int argc, char *const argv[], char *const envp[])
+__bootstrap_ctor static void xenomai_bootstrap(int argc, char *const argv[],
+                                               char *const envp[])
+{
+	(void)envp;
+	call_xenomai_init(&argc, &argv);
+}
 #else
 __bootstrap_ctor static void xenomai_bootstrap(void)
-#endif
 {
-#if _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL == 1
-	(void)envp;
-#else
 	char *const *argv;
 	int argc;
-	if (xenomai_init_fetchargv(&argc, &argv) != 0)
+	if (_xenomai_init_fetchargv(&argc, &argv) != 0)
 		return;
+
+	call_xenomai_init(&argc, &argv);
+}
 #endif
 
+/* If requested, we define the main function,
+   and weak refs */
+#ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER
+#ifdef _XENOMAI_BOOTSTRAP_DSO
+#error "Main wrapper is not allowed for shared libraries"
+#endif
+int _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(int argc, char *const argv[]);
 
-#if !defined(_XENOMAI_BOOTSTRAP_INITFLAGS) && !defined(_XENOMAI_BOOTSTRAP_MODNAME)
-	/* prefer previously existing functions for better backwards capability */
-#ifdef _XENOMAI_BOOTSTRAP_DSO
-	xenomai_init_dso(&argc, &argv);
-#else
-	xenomai_init(&argc, &argv);
+int xenomai_main(int argc, char *const argv[])
+{
+#ifdef trace_me
+	trace_me("xenomai_main entered");
 #endif
-#else
-	{
-		int isDso = 0;
-		unsigned long long bflags = 0;
-		const char *modname = NULL;
-#ifdef _XENOMAI_BOOTSTRAP_DSO
-		isDso = 1;
-#endif
-#ifdef _XENOMAI_BOOTSTRAP_INITFLAGS
-		bflags = _XENOMAI_BOOTSTRAP_INITFLAGS;
-#endif
-#ifdef _XENOMAI_BOOTSTRAP_MODNAME
-		modname = _XENOMAI_BOOTSTRAP_MODNAME;
-#endif
-		xenomai_init_ext(&argc, &argv, isDso, modname, bflags);
+
+	if (!xenomai_bootstrap_getargv(&argc, &argv)) {
+		call_xenomai_init(&argc, &argv);
 	}
+
+#if defined(trace_me) && defined(__stringify)
+	trace_me("xenomai_main call %s",
+	         __stringify(_XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER));
 #endif
-
-	early_argc = argc;
-	early_argv = argv;
+	return _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(argc, argv);
 }
 
-#ifdef __cplusplus
-}
+#ifdef _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER
+int _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER(int argc, char *const argv[])
+        __attribute__((alias("xenomai_main"), weak));
+#endif /* ifdef _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER */
+#endif /* ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER */
+
+#ifdef _XENOMAI_BOOTSTRAP_STATIC_FETCHARGV
+#include "bootstrap_fetchargv.h"
 #endif
