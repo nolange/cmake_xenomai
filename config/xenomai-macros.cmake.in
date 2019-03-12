@@ -106,7 +106,7 @@ function(xenomai_target_bootstrap target)
   endif()
 
   set(_skins)
-  foreach(skin ${XBS_SKINS})
+  foreach(_skin ${XBS_SKINS})
     string(TOLOWER ${_skin} _lbname)
     set(_skins ${_skins} "Xenomai::${_lbname}")
   endforeach()
