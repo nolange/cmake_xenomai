@@ -1,4 +1,6 @@
 #!/bin/sh
+set -e
+set -u
 SRCDIR=$(dirname "$(readlink -f "$0")")
 printusage() {
 cat << EOF
@@ -42,6 +44,7 @@ includedir='${prefix}'/include
 version='@CMAKE_VERSION_CODE@'
 bitness='@CMAKE_SIZEOF_VOID_P@'
 do_version=
+has_bitness=
 
 while true ; do
   case "$1" in
@@ -51,7 +54,7 @@ while true ; do
     --libdir) libdir=$2; shift ;;
     --includedir) includedir=$2; shift ;;
     --version) version=$2; do_version=1; shift ;;
-    --bitness) bitness=$2; shift ;;
+    --bitness) bitness=$2; has_bitness=1; shift ;;
 
     --help) printusage; exit 0 ;;
     --) shift ; break ;;
@@ -60,7 +63,11 @@ while true ; do
   shift
 done
 
+[ -z "$do_version" ] || [ -n "$has_bitness" ] || { echo "Need to define bitness if version is set" 1>&2; printusage 1; }
+
+[ -d "${1-}" ] || { echo "No valid TARGETPATH" 1>&2; printusage 1; }
 targetpath=$1; shift
+
 # make simple absolute paths from the variables
 derefvar() {
   local var last
@@ -106,6 +113,8 @@ libdir_rel=$(torelpath "$prefix" "$libdir")
 includedir_rel=$(torelpath "$prefix" "$includedir")
 
 core_upper=$(printf "%s" $core | tr '[a-z]' '[A-Z]')
+
+autodetect_version=$(sed -n 's,.*\bVERSION[[:space:]"]*\([^[:space:]"]*\).*,\1,p' "$includedir"/xeno_config.h) || :
 
 TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
 (
