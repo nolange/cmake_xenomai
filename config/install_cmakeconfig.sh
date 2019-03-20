@@ -22,8 +22,9 @@ Options:
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
 
-  --version
-  --bitness
+  --version=VER           Xenomai version, will attempt to autodetect
+                          from header INCLUDEDIR/xeno_config.h
+  --bitness=SIZEOFVP      Target size-of-void-pointer
 EOF
   if [ -n "$1" ]; then exit $1; fi
 }
@@ -42,7 +43,7 @@ exec_prefix='${prefix}'
 libdir='${exec_prefix}'/lib
 includedir='${prefix}'/include
 version='@CMAKE_VERSION_CODE@'
-bitness='@CMAKE_SIZEOF_VOID_P@'
+bitness=
 do_version=
 has_bitness=
 
@@ -63,7 +64,7 @@ while true ; do
   shift
 done
 
-[ -z "$do_version" ] || [ -n "$has_bitness" ] || { echo "Need to define bitness if version is set" 1>&2; printusage 1; }
+# [ -z "$do_version" ] || [ -n "$has_bitness" ] || { echo "Need to define bitness if version is set" 1>&2; printusage 1; }
 
 [ -d "${1-}" ] || { echo "No valid TARGETPATH" 1>&2; printusage 1; }
 targetpath=$1; shift
@@ -114,12 +115,15 @@ includedir_rel=$(torelpath "$prefix" "$includedir")
 
 core_upper=$(printf "%s" $core | tr '[a-z]' '[A-Z]')
 
-autodetect_version=$(sed -n 's,.*\bVERSION[[:space:]"]*\([^[:space:]"]*\).*,\1,p' "$includedir"/xeno_config.h) || :
+if [ -z "$do_version" ]; then
+  autodetect_version=$(sed 2>/dev/null -n 's,.*\bVERSION[[:space:]"]*\([^[:space:]"]*\).*,\1,p' "$includedir"/xeno_config.h) &&
+    { version=$autodetect_version; do_version=1; } || :
+fi
 
 TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
 (
   cd "$SRCDIR"
-for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-macros.cmake.in ${do_version:+xenomai-config-version.cmake.in}; do
+for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-macros.cmake.in bootstrap-template.h ${do_version:+xenomai-config-version.cmake.in}; do
   tname=${template%.in}
   tname=${tname##*/}
   sed -e 's,@core@,'"$core"',g' \

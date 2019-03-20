@@ -59,6 +59,6 @@ createconfigfiles() {
     cp --parents mercury/xenomai-targets.cmake.in mercury/xenomai-targets-noconfig.cmake.in $TARGETDIR/.
     rm cobalt/xenomai-targets.cmake.in cobalt/xenomai-targets-noconfig.cmake.in
     cp  cobalt/*.cmake.in $TARGETDIR/.
-    cp "$SOURCEDIR"/install_cmakeconfig.sh $TARGETDIR/.
+    cp "$SOURCEDIR"/install_cmakeconfig.sh "$SOURCEDIR"/bootstrap-template.h $TARGETDIR/.
   )
 )
