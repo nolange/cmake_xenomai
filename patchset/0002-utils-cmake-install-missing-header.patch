@@ -1,0 +1,26 @@
+From a60b27f76ae28a2898a5016a1cd587010b207d47 Mon Sep 17 00:00:00 2001
+From: Norbert Lange <norbert.lange@andritz.com>
+Date: Wed, 20 Mar 2019 10:57:46 +0100
+Subject: [PATCH 2/2] utils/cmake: install missing header
+
+---
+ utils/cmake/Makefile.am | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/cmake/Makefile.am b/utils/cmake/Makefile.am
+index 8c6b249f2..f3cb5e8be 100644
+--- a/utils/cmake/Makefile.am
++++ b/utils/cmake/Makefile.am
+@@ -8,7 +8,7 @@ xenomai-config.cmake xenomai-macros.cmake \
+ 
+ cmakeconfigdir = $(libdir)/cmake/$(PACKAGE)
+ cmakeconfig_DATA = xenomai-config.cmake xenomai-macros.cmake xenomai-config-version.cmake \
+-	xenomai-targets.cmake xenomai-targets-noconfig.cmake
++	xenomai-targets.cmake xenomai-targets-noconfig.cmake bootstrap-template.h
+ 
+ CLEANFILES = build-stamp xenomai-config.cmake xenomai-config-version.cmake xenomai-macros.cmake \
+-	xenomai-targets.cmake xenomai-targets-noconfig.cmake
++	xenomai-targets.cmake xenomai-targets-noconfig.cmake bootstrap-template.h
+-- 
+2.20.1
+
