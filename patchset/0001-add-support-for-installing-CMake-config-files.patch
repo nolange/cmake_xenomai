@@ -1,22 +1,24 @@
-From c88fd452b2086819e9189bc604518ed21dfa815a Mon Sep 17 00:00:00 2001
+From 329fd35795efb5263ed1e00a2bb56e897224fb8c Mon Sep 17 00:00:00 2001
 From: Norbert Lange <norbert.lange@andritz.com>
 Date: Tue, 22 May 2018 14:52:15 +0200
-Subject: [PATCH 4/5] add support for installing CMake config files
+Subject: [PATCH] add support for installing CMake config files
 
 ---
  configure.ac                                  |   8 +
  utils/Makefile.am                             |   2 +-
- utils/cmake/Makefile.am                       |  14 ++
- .../cobalt/xenomai-targets-noconfig.cmake.in  |  79 +++++++++
- utils/cmake/cobalt/xenomai-targets.cmake.in   | 165 ++++++++++++++++++
- utils/cmake/install_cmakeconfig.sh            | 128 ++++++++++++++
- .../mercury/xenomai-targets-noconfig.cmake.in |  69 ++++++++
- utils/cmake/mercury/xenomai-targets.cmake.in  | 157 +++++++++++++++++
- utils/cmake/xenomai-config-version.cmake.in   |  31 ++++
- utils/cmake/xenomai-config.cmake.in           |  45 +++++
- utils/cmake/xenomai-macros.cmake.in           |  92 ++++++++++
- 11 files changed, 789 insertions(+), 1 deletion(-)
+ utils/cmake/Makefile.am                       |  14 +
+ utils/cmake/bootstrap-template.h              | 321 ++++++++++++++++++
+ .../cobalt/xenomai-targets-noconfig.cmake.in  |  79 +++++
+ utils/cmake/cobalt/xenomai-targets.cmake.in   | 165 +++++++++
+ utils/cmake/install_cmakeconfig.sh            | 141 ++++++++
+ .../mercury/xenomai-targets-noconfig.cmake.in |  69 ++++
+ utils/cmake/mercury/xenomai-targets.cmake.in  | 157 +++++++++
+ utils/cmake/xenomai-config-version.cmake.in   |  31 ++
+ utils/cmake/xenomai-config.cmake.in           |  45 +++
+ utils/cmake/xenomai-macros.cmake.in           | 134 ++++++++
+ 12 files changed, 1165 insertions(+), 1 deletion(-)
  create mode 100644 utils/cmake/Makefile.am
+ create mode 100644 utils/cmake/bootstrap-template.h
  create mode 100644 utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in
  create mode 100644 utils/cmake/cobalt/xenomai-targets.cmake.in
  create mode 100755 utils/cmake/install_cmakeconfig.sh
@@ -27,14 +29,14 @@ Subject: [PATCH 4/5] add support for installing CMake config files
  create mode 100644 utils/cmake/xenomai-macros.cmake.in
 
 diff --git a/configure.ac b/configure.ac
-index 4f9b1f928..1dc3c6aca 100644
+index b8fd2fbed..97e7c12eb 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -478,6 +478,12 @@ fi
-
+@@ -516,6 +516,12 @@ fi
+ 
  test x$CONFIG_XENO_VALGRIND_API = xy && AC_DEFINE(CONFIG_XENO_VALGRIND_API,1,[config])
-
-+dnl Create a variable needed for later substition
+ 
++dnl Create a variable needed for later substition 
 +AC_CHECK_SIZEOF([void *])
 +AC_SUBST(CMAKE_SIZEOF_VOID_P, $ac_cv_sizeof_void_p)
 +
@@ -43,19 +45,12 @@ index 4f9b1f928..1dc3c6aca 100644
  dnl Check for obstack support in *libc
  AC_CHECK_HEADERS(obstack.h,libc_has_obstack=y)
  AM_CONDITIONAL(XENO_PRIVATE_OBSTACK,[test x$libc_has_obstack = x])
-@@ -844,6 +850,7 @@ AC_CONFIG_FILES([ \
- 	scripts/Makefile \
- 	scripts/xeno-config:scripts/xeno-config-$rtcore_type.in \
- 	scripts/xeno \
-+	utils/cmake/xenomai-config-version.cmake \
- 	lib/Makefile \
- 	lib/boilerplate/Makefile \
- 	lib/boilerplate/init/Makefile \
-@@ -909,6 +916,7 @@ AC_CONFIG_FILES([ \
+@@ -976,6 +982,8 @@ AC_CONFIG_FILES([ \
  	utils/Makefile \
  	utils/hdb/Makefile \
  	utils/can/Makefile \
 +	utils/cmake/Makefile \
++	utils/cmake/xenomai-config-version.cmake \
  	utils/analogy/Makefile \
  	utils/ps/Makefile \
  	utils/slackspot/Makefile \
@@ -89,6 +84,333 @@ index 000000000..8c6b249f2
 +
 +CLEANFILES = build-stamp xenomai-config.cmake xenomai-config-version.cmake xenomai-macros.cmake \
 +	xenomai-targets.cmake xenomai-targets-noconfig.cmake
+diff --git a/utils/cmake/bootstrap-template.h b/utils/cmake/bootstrap-template.h
+new file mode 100644
+index 000000000..b40dfa1e0
+--- /dev/null
++++ b/utils/cmake/bootstrap-template.h
+@@ -0,0 +1,321 @@
++/*
++ * The source code in this particular file is released using a dual
++ * license scheme.  You can choose the licence that better fits your
++ * requirements.
++ *
++ * -----------------------------------------------------------------------
++ *
++ * Copyright (C) 2017 Philippe Gerum <rpm@xenomai.org>
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining
++ * a copy of this software and associated documentation files (the
++ * "Software"), to deal in the Software without restriction, including
++ * without limitation the rights to use, copy, modify, merge, publish,
++ * distribute, sublicense, and/or sell copies of the Software, and to
++ * permit persons to whom the Software is furnished to do so, subject to
++ * the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be included
++ * in all copies or substantial portions of the Software.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ *
++ * -----------------------------------------------------------------------
++ *
++ * Copyright (C) 2013 Philippe Gerum <rpm@xenomai.org>.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
++ */
++
++/* @file bootstrap-template.h
++ * @brief Template header for bootstrap code
++ *
++ * The bootstrap code is configurable and is supposed to
++ * create a small routine that is called before other
++ * automatic GCC/C++ constructors are executed,
++ * as well as the regular main() routine.
++ *
++ * At its minimum it defines a constructor that calls
++ * a xenomai_init variant,
++ * and a function to retrieve the modified argv vector.
++ *
++ * Additionally a wrapper for the main() routine can be defined.
++ * Related Macros allow to specify the name of the wrapper.
++ *
++ * Look into lib/boilerplate/init for usecases covering
++ * shared libraries and executables usind the auto-init feature.
++ *
++ * Special handling for glibc can be enabled.
++ * This library will pass the argv vector to constructor
++ * function, thus allowing easy access to the commandline.
++ *
++ * Macros affecting the defined functionality:
++ *
++ * _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS
++ *                  Use glibc constructor signature (if glibc detected)
++ * _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL
++ *                  *Force* glibc constructor signature on/off (value 1/0)
++ * _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER
++ *                  Define a main function, calling the macro expression
++ * _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER
++ *                  Set a weak reference to the defined main function
++ * _XENOMAI_BOOTSTRAP_DSO
++ *                  Should be defined when building shared libraries
++ */
++
++#include <xenomai/init.h>
++
++/* if requested by _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS,
++ * test if macros for glibc are defined and
++ * define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL accordingly */
++#if !defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) &&                    \
++        defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS)
++#if defined(__GLIBC__) && !defined(__UCLIBC__)
++#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL 1
++#endif
++#endif
++
++/* declare C Functions as such */
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++void xenomai_init(int *argcp, char *const **argvp);
++int xenomai_main(int argc, char *const argv[]);
++
++int xenomai_bootstrap_getargv(int *argc, char *const **argv);
++
++#ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER
++int _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(int argc, char *const argv[]);
++#endif
++
++#if defined(_XENOMAI_INIT_HASFETCHARGV)
++#define _xenomai_init_fetchargv(a, v) xenomai_init_fetchargv((a), (v))
++#else
++__attribute__((unused,always_inline))
++static __inline__ int _xenomai_init_fetchargv(int *argcp, char *const **argvp);
++#endif
++
++#ifndef __bootstrap_ctor
++#define __bootstrap_ctor __attribute__((constructor(220)))
++#endif
++
++static struct xbootstrap_state {
++	int argc;
++	char *const *argv;
++} early_args;
++
++#ifdef __cplusplus
++}
++#endif
++
++/* @brief get the potentially argv vector
++ *
++ * The xenomai init code modifies the argv vector,
++ * this function allows to retrive this vector later.
++ */
++int xenomai_bootstrap_getargv(int *argc, char *const **argv)
++{
++	if (early_args.argc) {
++		*argc = early_args.argc;
++		*argv = early_args.argv;
++		return 1;
++	}
++	return 0;
++}
++
++static __inline__ void _xenomai_bootstrap_setargv(int argc, char *const *argv)
++{
++	early_args.argc = argc;
++	early_args.argv = argv;
++}
++
++static __inline__ void call_xenomai_init(int *argcp, char *const **argvp)
++{
++#if !defined(_XENOMAI_BOOTSTRAP_INITFLAGS) &&                                  \
++        !defined(_XENOMAI_BOOTSTRAP_MODNAME)
++	/* prefer previously existing functions for better backwards capability */
++#ifdef _XENOMAI_BOOTSTRAP_DSO
++	xenomai_init_dso(argcp, argvp);
++#else
++	xenomai_init(argcp, argvp);
++#endif
++
++#else
++	int isDso = 0;
++	unsigned long long bflags = 0;
++	const char *modname = NULL;
++#ifdef _XENOMAI_BOOTSTRAP_DSO
++	isDso = 1;
++#endif
++#ifdef _XENOMAI_BOOTSTRAP_INITFLAGS
++	bflags = _XENOMAI_BOOTSTRAP_INITFLAGS;
++#endif
++#ifdef _XENOMAI_BOOTSTRAP_MODNAME
++	modname = _XENOMAI_BOOTSTRAP_MODNAME;
++#endif
++	xenomai_init_ext(argcp, argvp, isDso, modname, bflags);
++#endif
++
++	_xenomai_bootstrap_setargv(*argcp, *argvp);
++}
++
++/** Bootstrap: handle commandline args and call xenomai's init
++ *
++ * glibc calls constructors/destructors with the argv vector,
++ * which is nice as this avoids some code.
++ * Other C-libraries don't, and worse: define __GLIBC__
++ * This probably should be an explicit opt-in
++ */
++#if _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL == 1
++__bootstrap_ctor __attribute__((cold))
++static void xenomai_bootstrap(int argc, char *const argv[],
++                                               char *const envp[])
++{
++	(void)envp;
++	call_xenomai_init(&argc, &argv);
++}
++#else
++__bootstrap_ctor __attribute__ ((cold))
++static void xenomai_bootstrap(void)
++{
++	char *const *argv;
++	int argc;
++	if (_xenomai_init_fetchargv(&argc, &argv) != 0)
++		return;
++
++	call_xenomai_init(&argc, &argv);
++}
++#endif
++
++/* If requested, we define the main function,
++   and weak refs */
++#ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER
++#ifdef _XENOMAI_BOOTSTRAP_DSO
++#error "Main wrapper is not allowed for shared libraries"
++#endif
++int _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(int argc, char *const argv[]);
++
++int xenomai_main(int argc, char *const argv[])
++{
++#ifdef trace_me
++	trace_me("xenomai_main entered");
++#endif
++
++	if (!xenomai_bootstrap_getargv(&argc, &argv)) {
++		call_xenomai_init(&argc, &argv);
++	}
++
++#if defined(trace_me) && defined(__stringify)
++	trace_me("xenomai_main call %s",
++	         __stringify(_XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER));
++#endif
++	return _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(argc, argv);
++}
++
++#ifdef _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER
++int _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER(int argc, char *const argv[])
++        __attribute__((alias("xenomai_main"), weak));
++#endif /* ifdef _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER */
++#endif /* ifdef _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER */
++
++/* if needed and not in the DSO, then
++ * define a function for fetching the commandline arguments
++ */
++#if !defined(_XENOMAI_INIT_HASFETCHARGV) &&                                    \
++        (!defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) ||               \
++         _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL != 1)
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <unistd.h>
++#include <stdlib.h>
++#include <string.h>
++#include <fcntl.h>
++
++/* only needed if the modecheck wrappers are active */
++#ifdef _XENOMAI_BOOTSTRAP_WRAP_MALLOC
++#define _WRM(x) __STD(x)
++#else
++#define _WRM(x) x
++#endif
++
++
++__attribute__((cold)) int _xenomai_init_fetchargv(int *argcp, char *const **argvp)
++{
++	char *arglist, *argend, *p, **v;
++	ssize_t len, ret;
++	int fd, n;
++
++	len = 1024;
++
++	for (;;) {
++		fd = __STD(open("/proc/self/cmdline", O_RDONLY));
++		if (fd < 0)
++			return -1;
++
++		arglist = (char*)_WRM(malloc(len));
++		if (arglist == NULL) {
++			__STD(close(fd));
++			return -1;
++		}
++
++		ret = __STD(read(fd, arglist, len));
++		__STD(close(fd));
++
++		if (ret < 0) {
++			__STD(free(arglist));
++			return -1;
++		}
++
++		if (ret < len)
++			break;
++
++		__STD(free(arglist));
++		len <<= 1;
++	}
++
++	argend = arglist + ret;
++	p = arglist;
++	n = 0;
++	while (p < argend) {
++		n++;
++		p += strlen(p) + 1;
++	}
++
++	v = (char**)_WRM(malloc((n + 1) * sizeof(char *)));
++	if (v == NULL) {
++		__STD(free(arglist));
++		return -1;
++	}
++
++	p = arglist;
++	n = 0;
++	while (p < argend) {
++		v[n++] = p;
++		p += strlen(p) + 1;
++	}
++
++	v[n] = NULL;
++	*argcp = n;
++	*argvp = v;
++	return 0;
++}
++#endif
 diff --git a/utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in b/utils/cmake/cobalt/xenomai-targets-noconfig.cmake.in
 new file mode 100644
 index 000000000..4e519f646
@@ -347,11 +669,13 @@ index 000000000..1448c2799
 +cmake_policy(POP)
 diff --git a/utils/cmake/install_cmakeconfig.sh b/utils/cmake/install_cmakeconfig.sh
 new file mode 100755
-index 000000000..473780634
+index 000000000..afef4b17d
 --- /dev/null
 +++ b/utils/cmake/install_cmakeconfig.sh
-@@ -0,0 +1,128 @@
+@@ -0,0 +1,141 @@
 +#!/bin/sh
++set -e
++set -u
 +SRCDIR=$(dirname "$(readlink -f "$0")")
 +printusage() {
 +cat << EOF
@@ -373,8 +697,9 @@ index 000000000..473780634
 +  --libdir=DIR            object code libraries [EPREFIX/lib]
 +  --includedir=DIR        C header files [PREFIX/include]
 +
-+  --version
-+  --bitness
++  --version=VER           Xenomai version, will attempt to autodetect
++                          from header INCLUDEDIR/xeno_config.h
++  --bitness=SIZEOFVP      Target size-of-void-pointer
 +EOF
 +  if [ -n "$1" ]; then exit $1; fi
 +}
@@ -393,8 +718,9 @@ index 000000000..473780634
 +libdir='${exec_prefix}'/lib
 +includedir='${prefix}'/include
 +version='@CMAKE_VERSION_CODE@'
-+bitness='@CMAKE_SIZEOF_VOID_P@'
++bitness=
 +do_version=
++has_bitness=
 +
 +while true ; do
 +  case "$1" in
@@ -404,7 +730,7 @@ index 000000000..473780634
 +    --libdir) libdir=$2; shift ;;
 +    --includedir) includedir=$2; shift ;;
 +    --version) version=$2; do_version=1; shift ;;
-+    --bitness) bitness=$2; shift ;;
++    --bitness) bitness=$2; has_bitness=1; shift ;;
 +
 +    --help) printusage; exit 0 ;;
 +    --) shift ; break ;;
@@ -413,7 +739,11 @@ index 000000000..473780634
 +  shift
 +done
 +
++# [ -z "$do_version" ] || [ -n "$has_bitness" ] || { echo "Need to define bitness if version is set" 1>&2; printusage 1; }
++
++[ -d "${1-}" ] || { echo "No valid TARGETPATH" 1>&2; printusage 1; }
 +targetpath=$1; shift
++
 +# make simple absolute paths from the variables
 +derefvar() {
 +  local var last
@@ -460,10 +790,15 @@ index 000000000..473780634
 +
 +core_upper=$(printf "%s" $core | tr '[a-z]' '[A-Z]')
 +
++if [ -z "$do_version" ]; then
++  autodetect_version=$(sed 2>/dev/null -n 's,.*\bVERSION[[:space:]"]*\([^[:space:]"]*\).*,\1,p' "$includedir"/xeno_config.h) &&
++    { version=$autodetect_version; do_version=1; } || :
++fi
++
 +TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
 +(
 +  cd "$SRCDIR"
-+for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-macros.cmake.in ${do_version:+xenomai-config-version.cmake.in}; do
++for template in ${core}/xenomai-targets.cmake.in ${core}/xenomai-targets-noconfig.cmake.in xenomai-config.cmake.in xenomai-macros.cmake.in bootstrap-template.h ${do_version:+xenomai-config-version.cmake.in}; do
 +  tname=${template%.in}
 +  tname=${tname##*/}
 +  sed -e 's,@core@,'"$core"',g' \
@@ -756,7 +1091,7 @@ index 000000000..df856acd0
 +endif()
 diff --git a/utils/cmake/xenomai-config.cmake.in b/utils/cmake/xenomai-config.cmake.in
 new file mode 100644
-index 000000000..530a2952a
+index 000000000..6bc8ea727
 --- /dev/null
 +++ b/utils/cmake/xenomai-config.cmake.in
 @@ -0,0 +1,45 @@
@@ -791,7 +1126,7 @@ index 000000000..530a2952a
 +
 +set(_xenomai_threadlib "Threads::Threads")
 +if(CMAKE_VERSION VERSION_LESS 3.1)
-+	set(_xenomai_threadlib "${CMAKE_THREAD_LIBS_INIT}")
++  set(_xenomai_threadlib "${CMAKE_THREAD_LIBS_INIT}")
 +endif()
 +
 +set(_xenomai_includedir "@includedir_rel@")
@@ -807,102 +1142,144 @@ index 000000000..530a2952a
 +unset(_xenomai_includedir)
 diff --git a/utils/cmake/xenomai-macros.cmake.in b/utils/cmake/xenomai-macros.cmake.in
 new file mode 100644
-index 000000000..11bde675f
+index 000000000..0c4a60e48
 --- /dev/null
 +++ b/utils/cmake/xenomai-macros.cmake.in
-@@ -0,0 +1,92 @@
+@@ -0,0 +1,134 @@
++# Distributed under the OSI-approved BSD 3-Clause License.  See accompanying
++# file Copyright.txt or https://cmake.org/licensing for details.
++
++#[=======================================================================[.rst:
++XenomaiTargetBootstrap
++----------------------
++
++Minimal required CMake Version is 3.0, several features are only fully usable
++with 3.1
++#]=======================================================================]
++
++set(_XenomaiMacros_SELF "${CMAKE_CURRENT_LIST_FILE}")
++get_filename_component(_XenomaiMacros_SELF_DIR "${_XenomaiMacros_SELF}" PATH)
 +
 +if(CMAKE_VERSION VERSION_LESS 3.5)
-+include(CMakeParseArguments)
++  include(CMakeParseArguments)
 +endif()
 +
 +function(xenomai_target_bootstrap target)
 +
-+	set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
++  set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
++  set(_fileinclude "#include \"xenomai_bootstrap_template.h\"\n")
 +
-+	file(WRITE "${_fileprefix}_main.c" "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>")
-+	file(WRITE "${_fileprefix}_shl.c" "#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>")
-+	file(WRITE "${_fileprefix}.c" "#include <xenomai/bootstrap-template.h>")
++  set(_extradefines "#define _XENOMAI_BOOTSTRAP_WRAP_MALLOC\n#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n")
 +
-+	get_target_property(ttype ${target} TYPE)
++  file(WRITE "${_fileprefix}_main.c.tmp"
++      "#ifdef main\n#undef main\n#endif\n${_extradefines}#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n${_fileinclude}"
++    )
++  file(WRITE "${_fileprefix}_shl.c.tmp"
++      "${_extradefines}#define _XENOMAI_BOOTSTRAP_DSO\n${_fileinclude}"
++    )
++  file(WRITE "${_fileprefix}.c.tmp"
++      "${_extradefines}${_fileinclude}"
++    )
 +
-+	cmake_parse_arguments(XBS "NO_FALLBACK" "MAIN;MAIN_WRAP" "SKINS" ${ARGN})
-+	set(_errors)
++  execute_process(
++  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_XenomaiMacros_SELF_DIR}/bootstrap-template.h" "${_fileprefix}_template.h"
++  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_fileprefix}_main.c.tmp" "${_fileprefix}_main.c"
++  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_fileprefix}_shl.c.tmp" "${_fileprefix}_shl.c"
++  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_fileprefix}.c.tmp" "${_fileprefix}.c"
++  )
 +
-+	if(XBS_MAIN AND NOT XBS_MAIN STREQUAL "NONE" AND NOT XBS_MAIN STREQUAL "SOURCE" AND NOT XBS_MAIN STREQUAL "PRECOMPILED")
-+		set(_errors ${_errors} "MAIN only support the values NONE, SOURCE and PRECOMPILED")
-+	endif()
-+	if(XBS_MAIN_WRAP AND NOT XBS_MAIN_WRAP STREQUAL "NONE" AND NOT XBS_MAIN_WRAP STREQUAL "MACRO" AND NOT XBS_MAIN_WRAP STREQUAL "LINKER")
-+		set(_errors ${_errors} "XBS_MAIN_WRAP only support the values NONE, MACRO and LINKER")
-+	endif()
++  get_target_property(ttype ${target} TYPE)
 +
-+	# the default is not working on CMake 3.0, so fallback to
-+	# the precompiled objects unless this was disabled
-+	if(CMAKE_VERSION VERSION_LESS 3.1)
-+		if(NOT XBS_MAIN OR XBS_MAIN STREQUAL "NONE" OR XBS_MAIN STREQUAL "SOURCE")
-+			if(XBS_NO_FALLBACK)
-+				set(_errors ${_errors} "MAIN NONE and MAIN SOURCE need atleast CMake 3.1")
-+			else()
-+				if(ttype STREQUAL EXECUTABLE)
-+					message(WARNING "xenomai_target_bootstrap: setting MAIN PRECOMPILED for ${target} (CMake Version less than 3.1)")
-+				endif()
-+				set(XBS_MAIN "PRECOMPILED")
-+				if(NOT XBS_MAIN_WRAP OR XBS_MAIN_WRAP STREQUAL "NONE" OR XBS_MAIN_WRAP STREQUAL "MACRO")
-+					set(XBS_MAIN_WRAP "LINKER")
-+					if(ttype STREQUAL EXECUTABLE)
-+						message(WARNING "xenomai_target_bootstrap: setting XBS_MAIN_WRAP LINKER for ${target} (CMake Version less than 3.1)")
-+					endif()
-+				endif()
-+			endif()
-+		endif()
-+	endif()
++  cmake_parse_arguments(XBS "NO_FALLBACK;MODECHK" "MAIN;MAIN_WRAP" "SKINS" ${ARGN})
++  set(_errors)
 +
-+	if(_errors)
-+		message(SEND_ERROR "xenomai_target_bootstrap: ${_errors}")
-+		return()
-+	endif()
++  if(XBS_MAIN
++     AND NOT XBS_MAIN STREQUAL "NONE"
++     AND NOT XBS_MAIN STREQUAL "SOURCE"
++     AND NOT XBS_MAIN STREQUAL "PRECOMPILED")
++    set(_errors ${_errors}
++        "MAIN only support the values NONE, SOURCE and PRECOMPILED")
++  endif()
++  if(XBS_MAIN_WRAP
++     AND NOT XBS_MAIN_WRAP STREQUAL "NONE"
++     AND NOT XBS_MAIN_WRAP STREQUAL "MACRO"
++     AND NOT XBS_MAIN_WRAP STREQUAL "LINKER")
++    set(_errors ${_errors}
++        "XBS_MAIN_WRAP only support the values NONE, MACRO and LINKER")
++  endif()
 +
-+	if(XBS_MAIN STREQUAL "SOURCE")
-+		target_sources(${target} PRIVATE
-+			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
-+			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>"
-+		)
++  # the default is not working on CMake 3.0, so fallback to the precompiled
++  # objects unless this was disabled
++  if(CMAKE_VERSION VERSION_LESS 3.1)
++    if(NOT XBS_MAIN OR XBS_MAIN STREQUAL "NONE" OR XBS_MAIN STREQUAL "SOURCE")
++      if(XBS_NO_FALLBACK)
++        set(_errors ${_errors}
++            "MAIN NONE and MAIN SOURCE need atleast CMake 3.1")
++      else()
++        if(ttype STREQUAL EXECUTABLE)
++          message(
++            WARNING
++              "xenomai_target_bootstrap: setting MAIN PRECOMPILED for ${target} (CMake Version less than 3.1)"
++            )
++        endif()
++        set(XBS_MAIN "PRECOMPILED")
++        if(NOT XBS_MAIN_WRAP
++           OR XBS_MAIN_WRAP STREQUAL "NONE"
++           OR XBS_MAIN_WRAP STREQUAL "MACRO")
++          set(XBS_MAIN_WRAP "LINKER")
++          if(ttype STREQUAL EXECUTABLE)
++            message(
++              WARNING
++                "xenomai_target_bootstrap: setting XBS_MAIN_WRAP LINKER for ${target} (CMake Version less than 3.1)"
++              )
++          endif()
++        endif()
++      endif()
++    endif()
++  endif()
 +
-+	elseif(XBS_MAIN STREQUAL "PRECOMPILED")
-+		target_link_libraries(${target} PRIVATE
-+			Xenomai::legacy_bootstrap
-+		)
++  if(_errors)
++    message(SEND_ERROR "xenomai_target_bootstrap: ${_errors}")
++    return()
++  endif()
 +
-+	else()
-+		target_sources(${target} PRIVATE
-+			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
-+			"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>"
-+		)
++  if(XBS_MAIN STREQUAL "SOURCE")
++    target_sources(${target} PRIVATE
++      "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
++      "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}_main.c>")
 +
-+	endif()
++  elseif(XBS_MAIN STREQUAL "PRECOMPILED")
++    target_link_libraries(${target} PRIVATE Xenomai::legacy_bootstrap)
 +
-+	if(XBS_MAIN_WRAP STREQUAL "MACRO")
-+		target_compile_definitions(${target} PRIVATE
-+			$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>
-+		)
++  else()
++    target_sources(${target} PRIVATE
++      "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
++      "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>")
 +
-+	elseif(XBS_MAIN_WRAP STREQUAL "LINKER")
-+		target_link_libraries(${target} PRIVATE
-+			Xenomai::legacy_bootstrap_wrap
-+		)
-+	endif()
++  endif()
 +
-+	set(_skins)
-+	foreach(skin ${XBS_SKINS})
-+		set(_skins ${_skins} "Xenomai::${skin}")
-+	endforeach()
++  if(XBS_MODECHK)
++  	target_link_libraries(${target} PRIVATE Xenomai::modechk)
++  endif()
 +
-+	if(_skins)
-+		target_link_libraries(${target} PRIVATE
-+			${_skins}
-+		)
-+	endif()
++  if(XBS_MAIN_WRAP STREQUAL "MACRO")
++    target_compile_definitions(${target} PRIVATE
++      $<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:main=__real_main>)
++
++  elseif(XBS_MAIN_WRAP STREQUAL "LINKER")
++    target_link_libraries(${target} PRIVATE Xenomai::legacy_bootstrap_wrap)
++  endif()
++
++  set(_skins)
++  foreach(_skin ${XBS_SKINS})
++    string(TOLOWER ${_skin} _lbname)
++    set(_skins ${_skins} "Xenomai::${_lbname}")
++  endforeach()
++
++  if(_skins)
++    target_link_libraries(${target} PRIVATE ${_skins})
++  endif()
 +endfunction()
---
-2.19.2
+-- 
+2.20.1
 
