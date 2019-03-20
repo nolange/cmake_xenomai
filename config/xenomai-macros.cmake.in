@@ -9,6 +9,9 @@ Minimal required CMake Version is 3.0, several features are only fully usable
 with 3.1
 #]=======================================================================]
 
+set(_XenomaiMacros_SELF "${CMAKE_CURRENT_LIST_FILE}")
+get_filename_component(_XenomaiMacros_SELF_DIR "${_XenomaiMacros_SELF}" PATH)
+
 if(CMAKE_VERSION VERSION_LESS 3.5)
   include(CMakeParseArguments)
 endif()
@@ -16,20 +19,30 @@ endif()
 function(xenomai_target_bootstrap target)
 
   set(_fileprefix "${CMAKE_CURRENT_BINARY_DIR}/generated/xenomai_bootstrap")
+  set(_fileinclude "#include \"xenomai_bootstrap_template.h\"\n")
 
-  file(WRITE "${_fileprefix}_main.c"
-      "#ifdef main\n#undef main\n#endif\n#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n#include <xenomai/bootstrap-template.h>"
+  set(_extradefines "#define _XENOMAI_BOOTSTRAP_WRAP_MALLOC\n#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n")
+
+  file(WRITE "${_fileprefix}_main.c.tmp"
+      "#ifdef main\n#undef main\n#endif\n${_extradefines}#define _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER __real_main\n#define _XENOMAI_BOOTSTRAP_WEAKREF_MAINWRAPPER main\n${_fileinclude}"
     )
-  file(WRITE "${_fileprefix}_shl.c"
-      "#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#define _XENOMAI_BOOTSTRAP_DSO\n#include <xenomai/bootstrap-template.h>"
+  file(WRITE "${_fileprefix}_shl.c.tmp"
+      "${_extradefines}#define _XENOMAI_BOOTSTRAP_DSO\n${_fileinclude}"
     )
-  file(WRITE "${_fileprefix}.c"
-      "#define _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS\n#include <xenomai/bootstrap-template.h>"
+  file(WRITE "${_fileprefix}.c.tmp"
+      "${_extradefines}${_fileinclude}"
     )
+
+  execute_process(
+  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_XenomaiMacros_SELF_DIR}/bootstrap-template.h" "${_fileprefix}_template.h"
+  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_fileprefix}_main.c.tmp" "${_fileprefix}_main.c"
+  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_fileprefix}_shl.c.tmp" "${_fileprefix}_shl.c"
+  	COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${_fileprefix}.c.tmp" "${_fileprefix}.c"
+  )
 
   get_target_property(ttype ${target} TYPE)
 
-  cmake_parse_arguments(XBS "NO_FALLBACK" "MAIN;MAIN_WRAP" "SKINS" ${ARGN})
+  cmake_parse_arguments(XBS "NO_FALLBACK;MODECHK" "MAIN;MAIN_WRAP" "SKINS" ${ARGN})
   set(_errors)
 
   if(XBS_MAIN
@@ -95,6 +108,10 @@ function(xenomai_target_bootstrap target)
       "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,SHARED_LIBRARY>:${_fileprefix}_shl.c>"
       "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:${_fileprefix}.c>")
 
+  endif()
+
+  if(XBS_MODECHK)
+  	target_link_libraries(${target} PRIVATE Xenomai::modechk)
   endif()
 
   if(XBS_MAIN_WRAP STREQUAL "MACRO")

@@ -1,4 +1,6 @@
 #!/bin/sh
+set -e
+set -u
 TARGETDIR=$1
 TARGETDIR=$(readlink -m "$TARGETDIR")
 
@@ -11,7 +13,7 @@ insertplaceholders() {
 
     # support thread lib dependency for CMake 3.0
     sed -e 's,Threads::Threads,${_xenomai_threadlib},g' -i "$path"/xenomai-targets.cmake
-    
+
     # replace relative paths with placeholders
     sed -e 's,${_IMPORT_PREFIX}/lib,${_IMPORT_PREFIX}/${_xenomai_libdir},g' \
         -e 's,${_IMPORT_PREFIX}/include,${_IMPORT_PREFIX}/${_xenomai_includedir},g' -i "$path"/xenomai-targets-noconfig.cmake
@@ -35,7 +37,7 @@ createconfigfiles() {
   OUTDIR=$1; shift
 (
   TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
-  
+
   ( cd $TEMPDIR; "$CMAKE" "$@"; )
   DESTDIR=$TEMPDIR/inst make -C $TEMPDIR install
   CMAKEDIR=$TEMPDIR/inst/usr/local/lib/cmake/xenomai
@@ -47,7 +49,7 @@ createconfigfiles() {
 (
   SOURCEDIR=$(pwd)
   TEMPDIR=$(mktemp -d); trap "rm -rf $TEMPDIR" 0
-  mkdir $TEMPDIR/cobalt $TEMPDIR/mercury 
+  mkdir $TEMPDIR/cobalt $TEMPDIR/mercury
   createconfigfiles $TEMPDIR/cobalt   -DXENOMAI_CORE_TYPE_COBALT=true "$SOURCEDIR"
   createconfigfiles $TEMPDIR/mercury  -DXENOMAI_CORE_TYPE_MERCURY=true "$SOURCEDIR"
   find $TEMPDIR/mercury $TEMPDIR/cobalt -type f -name '*.cmake' -exec mv "{}" "{}.in" \;

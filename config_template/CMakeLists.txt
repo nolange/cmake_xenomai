@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.0)
 project(Xenomai)
 include(GNUInstallDirs)
 
+execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "int foo() {}"
+  OUTPUT_FILE test.c
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+
 # set(PROVIDE_STATIC true)
 set(_staticlibs -static)
 
