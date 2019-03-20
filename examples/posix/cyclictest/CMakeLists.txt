@@ -1,7 +1,7 @@
 # At LEAST 3.5 but newer is better
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/modules")
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/modules")
 
 project(posix-cyclictest VERSION 0.92)
 
@@ -25,15 +25,20 @@ add_executable(cyclictest
 	cyclictest.c
 	error.c
 	rt-utils.c
-	${_XENOMAI_BOOTSTRAP_SOURCE}
 )
 target_link_libraries(cyclictest PRIVATE
-	Xenomai::Posix Threads::Threads rt
+	Xenomai::posix Threads::Threads rt
 )
+	if(TARGET Xenomai::cobalt AND BUILD_ENABLE_MODECK)
+	target_link_libraries(cyclictest PRIVATE
+		Xenomai::modechk
+	)
+endif()
 # Xenomai::Bootstrap
 if(CMAKE_VERSION VERSION_LESS "3.1")
 target_link_libraries(cyclictest PRIVATE
-	Xenomai::Bootstrap
+	Xenomai::legacy_bootstrap_wrap
+	Xenomai::legacy_bootstrap
 )
 endif()
 

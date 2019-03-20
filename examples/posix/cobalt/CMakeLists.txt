@@ -1,7 +1,7 @@
 # At LEAST 3.5 but newer is better
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/modules")
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/modules")
 
 project(posix-cobalt-demos VERSION 0.1)
 
@@ -20,8 +20,13 @@ foreach(tool bufp-label bufp-readwrite can-rtt eth_p_all gpiopwm iddp-label iddp
 		${tool}.c
 	)
 	target_link_libraries(${tool} PRIVATE
-		Xenomai::Cobalt Threads::Threads rt
+		Xenomai::cobalt Threads::Threads rt
 	)
+	if(TARGET Xenomai::cobalt AND BUILD_ENABLE_MODECK)
+	target_link_libraries(${tool} PRIVATE
+		Xenomai::modechk
+	)
+endif()
 	target_compile_definitions(${tool} PRIVATE
 		_GNU_SOURCE
 	)

@@ -1,7 +1,7 @@
 # At LEAST 3.5 but newer is better
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/modules")
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/modules")
 
 project(cross-link VERSION 0.1)
 
@@ -13,8 +13,13 @@ add_executable(cross-link
 )
 
 target_link_libraries(cross-link PRIVATE
-	Xenomai::Alchemy Xenomai::Cobalt rt
+	Xenomai::alchemy Xenomai::cobalt rt
 )
+if(TARGET Xenomai::cobalt AND BUILD_ENABLE_MODECK)
+	target_link_libraries(cross-link PRIVATE
+		Xenomai::modechk
+	)
+endif()
 target_compile_definitions(cross-link PRIVATE
 	_GNU_SOURCE
 )

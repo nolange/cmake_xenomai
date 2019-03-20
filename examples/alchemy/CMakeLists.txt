@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/modules")
+# set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/modules")
 
 project(altency VERSION 0.1)
 
@@ -23,8 +23,14 @@ target_link_libraries(altency PRIVATE
 )
 
 target_link_libraries(altency PRIVATE
-	Xenomai::Alchemy
+	Xenomai::alchemy
 )
+
+if(TARGET Xenomai::cobalt AND BUILD_ENABLE_MODECK)
+	target_link_libraries(altency PRIVATE
+		Xenomai::modechk
+	)
+endif()
 
 # Nice diagnostics
 include(FeatureSummary)
