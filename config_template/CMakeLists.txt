@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(Xenomai)
 include(GNUInstallDirs)
-
+# set(CMAKE_INSTALL_RPATH "/usr/xenomai/lib")
 execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "int foo() {}"
   OUTPUT_FILE test.c
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
@@ -49,7 +49,7 @@ if(_modechk)
   string(TOLOWER ${_modechk} _lbname)
   add_library(${_lbname} SHARED test.c)
   target_link_libraries(${_lbname}
-    INTERFACE "-Wl,@${CMAKE_INSTALL_FULL_LIBDIR}/modechk.wrappers")
+    INTERFACE "-Wl,@\"${CMAKE_INSTALL_FULL_LIBDIR}/modechk.wrappers\"")
   # push the dependent libraries to the far right side
   target_link_libraries(${_lbname} PUBLIC Threads::Threads -lrt)
 endif()
@@ -60,7 +60,7 @@ add_library(posix INTERFACE)
 if(XENOMAI_CORE_TYPE_COBALT)
   target_compile_definitions(posix INTERFACE __COBALT_WRAP__)
   target_link_libraries(posix
-    INTERFACE "-Wl,@${CMAKE_INSTALL_FULL_LIBDIR}/cobalt.wrappers" ${_corename})
+    INTERFACE "-Wl,@\"${CMAKE_INSTALL_FULL_LIBDIR}/cobalt.wrappers\"" ${_corename})
 
 else()
   target_link_libraries(posix INTERFACE ${_corename})

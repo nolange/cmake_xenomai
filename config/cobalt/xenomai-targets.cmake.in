@@ -4,7 +4,7 @@ if("${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}" LESS 2.5)
    message(FATAL_ERROR "CMake >= 2.6.0 required")
 endif()
 cmake_policy(PUSH)
-cmake_policy(VERSION 2.6)
+cmake_policy(VERSION 2.6...3.18)
 #----------------------------------------------------------------
 # Generated CMake target import file.
 #----------------------------------------------------------------
@@ -60,7 +60,7 @@ set_target_properties(Xenomai::cobalt PROPERTIES
 add_library(Xenomai::modechk SHARED IMPORTED)
 
 set_target_properties(Xenomai::modechk PROPERTIES
-  INTERFACE_LINK_LIBRARIES "-Wl,@${_IMPORT_PREFIX}/${_xenomai_libdir}/modechk.wrappers;${_xenomai_threadlib};-lrt"
+  INTERFACE_LINK_LIBRARIES "-Wl,@\"${_IMPORT_PREFIX}/${_xenomai_libdir}/modechk.wrappers\";${_xenomai_threadlib};-lrt"
 )
 
 # Create imported target Xenomai::legacy_bootstrap
@@ -82,7 +82,7 @@ add_library(Xenomai::posix INTERFACE IMPORTED)
 
 set_target_properties(Xenomai::posix PROPERTIES
   INTERFACE_COMPILE_DEFINITIONS "__COBALT_WRAP__"
-  INTERFACE_LINK_LIBRARIES "-Wl,@${_IMPORT_PREFIX}/${_xenomai_libdir}/cobalt.wrappers;Xenomai::cobalt"
+  INTERFACE_LINK_LIBRARIES "-Wl,@\"${_IMPORT_PREFIX}/${_xenomai_libdir}/cobalt.wrappers\";Xenomai::cobalt"
 )
 
 # Create imported target Xenomai::copperplate
