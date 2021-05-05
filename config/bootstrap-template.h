@@ -109,7 +109,8 @@ int _XENOMAI_BOOTSTRAP_DEFINE_MAINWRAPPER(int argc, char *const argv[]);
 
 #if defined(_XENOMAI_INIT_HASFETCHARGV)
 #define _xenomai_init_fetchargv(a, v) xenomai_init_fetchargv((a), (v))
-#else
+#elif  (!defined(_XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL) || \
+        _XENOMAI_BOOTSTRAP_GLIBC_CONSTRUCTORS_REAL != 1)
 __attribute__((unused,always_inline))
 static __inline__ int _xenomai_init_fetchargv(int *argcp, char *const **argvp);
 #endif
